@@ -13,13 +13,12 @@ class ProvisionService():
 
     @staticmethod
     async def get_provision(request: Request):
-        user_agent = request.headers.get("user-agent", "")
-        mac_match = re.search(settings.MAC_REGEX, user_agent)
-
-        if not mac_match:
+        mac_address = request.headers.get("Mac-Address")
+        
+        if not mac_address:
             return serve_file(settings.PROVISION_DIR)
 
-        mac = mac_match.group(0).replace(":", "").replace("-", "").lower()
+        mac = mac_address.replace(":", "").replace("-", "").lower()
         mac_file = settings.PROVISION_DIR / mac / "tvip_provision.xml"
 
         if not mac_file.exists():
