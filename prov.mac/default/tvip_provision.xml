@@ -1,0 +1,7 @@
+<provision reload="3600">
+<provision_server name="http://tvipupdate.net/"/>
+<update_server name="http://update.tvip.ru"/>
+
+<!-- Example of the tvip_provision.xml file. Replace it with the main file. -->
+
+</provision>
