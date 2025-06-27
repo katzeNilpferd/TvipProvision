@@ -1,0 +1,18 @@
+# Byte-compiled
+__pycache__/
+
+# Unit test / coverage reports
+.pytest_cache
+
+# PyCharm
+.idea/
+
+# Distribution / packaging
+dist/
+*.egg-info/
+
+# Environments
+.env
+.venv
+venv/
+env/
