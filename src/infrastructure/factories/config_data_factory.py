@@ -7,5 +7,5 @@ from infrastructure.value_objects.pydash_config_data import PydashConfigData
 class ConfigDataFactory:
 
     @staticmethod
-    def create(data: dict[str, Any]) -> 'ConfigData':
+    def create(data: dict[str, Any] = {}) -> 'ConfigData':
         return PydashConfigData.create(data)

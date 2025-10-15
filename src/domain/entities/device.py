@@ -12,3 +12,4 @@ class Device:
     model: Optional[str] = None
     last_activity: Optional[datetime] = None
     id: UUID = field(default_factory=uuid4)
+    config_id: Optional[UUID] = None
