@@ -15,7 +15,7 @@ class SQLDeviceRepository(DeviceRepository):
 
     async def save(self, device: Device) -> Device:
         db_device = self.db.query(DeviceModel).filter(
-            DeviceModel.mac_address == device.mac_address
+            DeviceModel.mac_address == device.mac_address.value
         ).first()
 
         if db_device:
@@ -27,7 +27,7 @@ class SQLDeviceRepository(DeviceRepository):
             #Create
             db_device = DeviceModel(
                 id = device.id,
-                mac_address = device.mac_address,
+                mac_address = device.mac_address.value,
                 model = device.model,
                 last_activity = device.last_activity,
                 config_id = device.config_id
@@ -51,7 +51,7 @@ class SQLDeviceRepository(DeviceRepository):
 
     async def get_by_mac(self, mac_address: MacAddress) -> Optional[Device]:
         db_device = self.db.query(DeviceModel).filter(
-            DeviceModel.mac_address == mac_address
+            DeviceModel.mac_address == mac_address.value
         ).first()
 
         return self._to_entity(db_device) if db_device else None
