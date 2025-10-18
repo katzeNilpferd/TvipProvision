@@ -13,3 +13,9 @@ class Device:
     last_activity: Optional[datetime] = None
     id: UUID = field(default_factory=uuid4)
     config_id: Optional[UUID] = None
+
+    def update_last_activity(self) -> None:
+        self.last_activity = datetime.utcnow()
+
+    def assign_config(self, config_id: UUID) -> None:
+        self.config_id = config_id
