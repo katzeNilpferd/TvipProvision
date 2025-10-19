@@ -1,11 +1,9 @@
 version: '3.8'
 
 services:
-  web:
+  tvip_provision:
     build: .
     ports:
       - "7373:80"
-    volumes:
-      - ./prov.mac:/var/www/tvipstb.net/prov.mac
     environment:
       - PYTHONUNBUFFERED=1
