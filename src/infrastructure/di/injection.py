@@ -1,0 +1,35 @@
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from domain.repositories.device_repository import DeviceRepository
+from domain.repositories.provision_repository import ProvisionRepository
+from domain.services.xml_serializer import XmlSerializer
+from application.use_cases.handle_provision_request import HandleProvisionRequestUseCase
+from infrastructure.database.database import get_db
+from infrastructure.repositories.sql_device_repository import SQLDeviceRepository
+from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
+from infrastructure.serializers.xmltodict_serializer import XmlToDictSerializer
+
+
+def get_device_repository(db: Session = Depends(get_db)) -> DeviceRepository:
+    return SQLDeviceRepository(db_session=db)
+
+
+def get_provision_repository(db: Session = Depends(get_db)) -> ProvisionRepository:
+    return SQLProvisionRepository(db_session=db)
+
+
+def get_xml_serializer() -> XmlSerializer:
+    return XmlToDictSerializer()
+
+
+def get_handle_provision_use_case(
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    provision_repo: ProvisionRepository = Depends(get_provision_repository),
+    xml_serializer: XmlSerializer = Depends(get_xml_serializer)
+) -> HandleProvisionRequestUseCase:
+    return HandleProvisionRequestUseCase(
+        device_repo=device_repo,
+        provision_repo=provision_repo, 
+        xml_serializer=xml_serializer
+    )
