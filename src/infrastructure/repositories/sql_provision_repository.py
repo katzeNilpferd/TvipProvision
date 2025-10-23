@@ -82,7 +82,7 @@ class SQLProvisionRepository(ProvisionRepository):
             db_config = ProvisionConfigModel(
                 id=config.id,
                 config_json=json.dumps(config.config_data.data),
-                config_type=config.config_type.value,
+                config_type=config.config_type.value.value,
                 description=config.description
             )
             self.db.add(db_config)
