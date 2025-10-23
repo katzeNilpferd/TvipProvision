@@ -10,9 +10,9 @@ class DefaultConfigService:
         return {
             'provision': {
                 '@reload': '3600',
-                'provision_server': {'name': ''},
-                'operator': {'name': ''},
-                'syslog_host': {'name': ''}
+                'provision_server': {'@name': ''},
+                'operator': {'@name': ''},
+                'syslog_host': {'@name': ''}
             }
         }
     
