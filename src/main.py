@@ -1,10 +1,19 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from presentation.api.endpoints import (provision, devices_management)
 
 
 app = FastAPI(title="TVIP Provisioning Service")
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 app.include_router(provision.router)
 app.include_router(devices_management.router)
