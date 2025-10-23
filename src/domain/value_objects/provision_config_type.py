@@ -22,3 +22,9 @@ class ProvisionConfigType:
     @classmethod
     def create_custom(cls) -> 'ProvisionConfigType':
         return cls(ConfigType.CUSTOM)
+    
+    def is_default(self) -> bool:
+        return self.value == ConfigType.DEFAULT
+    
+    def is_custom(self) -> bool:
+        return self.value == ConfigType.CUSTOM
