@@ -25,6 +25,11 @@ export const updateDeviceConfig = async (macAddress, updates) => {
   return response.data
 }
 
+export const resetDeviceConfig = async (macAddress) => {
+  const response = await api.post(`/devices/${macAddress}/reset-config`)
+  return response.data
+}
+
 export const getConfigs = async () => {
   const response = await api.get('/configs')
   return response.data

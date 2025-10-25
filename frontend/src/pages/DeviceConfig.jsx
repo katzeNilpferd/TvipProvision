@@ -6,7 +6,7 @@ import {
   Settings, Globe, Download, Users, Image, Clock
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getDeviceConfig, updateDeviceConfig } from '../services/api'
+import { getDeviceConfig, updateDeviceConfig, resetDeviceConfig } from '../services/api'
 import './DeviceConfig.css'
 
 const DeviceConfig = () => {
@@ -292,10 +292,19 @@ const DeviceConfig = () => {
   }
 
   const handleReset = async () => {
-    if (window.confirm('Reset all settings to default?')) {
-      setFormData(initializeDefaultForm())
+  if (window.confirm('Are you sure you want to reset all settings to default? This action cannot be undone.')) {
+    try {
+      await resetDeviceConfig(macAddress)
+      // Перезагружаем конфигурацию после сброса
+      await loadDeviceConfig()
+      setEditing(false)
+      alert('Configuration has been reset to default successfully!')
+    } catch (error) {
+      console.error('Failed to reset config:', error)
+      alert('Failed to reset configuration. Please try again.')
     }
   }
+}
 
   const renderField = (key, label, type = 'text', options = []) => {
     const value = formData[key] || ''
@@ -378,10 +387,10 @@ const DeviceConfig = () => {
           Back to Devices
         </Link>
         <div className="header-title">
-          <h1>TVIP Configuration</h1>
+          {/* <h1>TVIP Configuration</h1> */}
           <div className="device-identity">
             <span className="mac-address">{config.device.mac_address}</span>
-            <span className={`status-dot ${config.device.status || 'online'}`}></span>
+            {/* <span className={`status-dot ${config.device.status || 'online'}`}></span> */}
           </div>
         </div>
         <div className="actions">
