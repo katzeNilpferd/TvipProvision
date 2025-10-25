@@ -63,6 +63,7 @@ class UpdateDeviceConfigUseCase:
         current_config: ProvisionConfig, 
         updates: dict[str, Any]
     ) -> ProvisionConfig:
-        current_config.config_data.update(updates)
-        
+        new_config_data = current_config.config_data.update(updates)
+        current_config.config_data = new_config_data
+
         return await self.provision_repo.save(current_config)
