@@ -50,41 +50,46 @@ const DeviceConfig = () => {
   }
 
   const processConfigData = (data) => {
-    if (!data?.config?.parameters) return initializeDefaultForm()
+  if (!data?.config?.parameters) return initializeDefaultForm()
+  
+  const processed = {}
+  
+  // Рекурсивная функция для обработки любой структуры
+  const processObject = (obj, currentPath = '') => {
+    if (!obj || typeof obj !== 'object') return
     
-    const processed = {}
-    
-    // Обрабатываем структуру provision
-    if (data.config.parameters.provision) {
-      const provision = data.config.parameters.provision
+    Object.entries(obj).forEach(([key, value]) => {
+      const newPath = currentPath ? `${currentPath}.${key}` : key
       
-      // Атрибуты provision
-      if (provision['@reload']) processed['provision.@reload'] = provision['@reload']
-      
-      // Вложенные объекты
-      if (provision.provision_server) {
-        processed['provision.provision_server.@name'] = provision.provision_server['@name'] || ''
+      if (typeof value === 'object' && value !== null) {
+        if (key.startsWith('@')) {
+          // Атрибуты (@reload, @value и т.д.)
+          processed[`${currentPath}${key}`] = String(value)
+        } else {
+          // Вложенные объекты - обрабатываем рекурсивно
+          processObject(value, newPath)
+        }
+      } else {
+        // Простые значения
+        processed[newPath] = String(value)
       }
-      if (provision.operator) {
-        processed['provision.operator.@name'] = provision.operator['@name'] || ''
-      }
-      if (provision.syslog_host) {
-        processed['provision.syslog_host.@name'] = provision.syslog_host['@name'] || ''
-      }
-      if (provision.update_server) {
-        processed['provision.update_server.@name'] = provision.update_server['@name'] || ''
-      }
-      if (provision.tr69_server) {
-        processed['provision.tr69_server.@url'] = provision.tr69_server['@url'] || ''
-        processed['provision.tr69_server.@user'] = provision.tr69_server['@user'] || ''
-        processed['provision.tr69_server.@password'] = provision.tr69_server['@password'] || ''
-      }
-    }
-    
-    // Добавляем недостающие поля по умолчанию
-    const defaultForm = initializeDefaultForm()
-    return { ...defaultForm, ...processed }
+    })
   }
+  
+  // Обрабатываем всю структуру provision
+  if (data.config.parameters.provision) {
+    processObject(data.config.parameters.provision, 'provision')
+  }
+  
+  console.log('Processed form data from server:', processed)
+  
+  // Добавляем недостающие поля по умолчанию
+  const defaultForm = initializeDefaultForm()
+  const result = { ...defaultForm, ...processed }
+  
+  console.log('Final form data with defaults:', result)
+  return result
+}
 
   const initializeDefaultForm = () => {
     return {
