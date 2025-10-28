@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { 
-  ArrowLeft, Save, RotateCcw, RefreshCw, Power, Network, 
-  Server, Monitor, Wifi, Shield, Palette, Tv, Video,
-  Settings, Globe, Download, Users, Image, Clock
+  ArrowLeft, Save, RotateCcw, RefreshCw, 
+  Settings, Globe, Tv, Palette, Shield, Monitor, Server 
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { getDeviceConfig, updateDeviceConfig, resetDeviceConfig } from '../services/api'
+import { CONFIG_FIELDS, TABS } from './configFields'
 import './DeviceConfig.css'
+
+// Сопоставление иконок
+const ICON_MAP = {
+  Settings, Globe, Tv, Palette, Shield, Monitor, Server
+}
 
 const DeviceConfig = () => {
   const { macAddress } = useParams()
@@ -18,16 +22,7 @@ const DeviceConfig = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('basic')
 
-  const tabs = [
-    { id: 'basic', name: 'Basic', icon: Settings },
-    { id: 'network', name: 'Network', icon: Globe },
-    { id: 'tv', name: 'TV & Media', icon: Tv },
-    { id: 'ui', name: 'UI & Appearance', icon: Palette },
-    { id: 'security', name: 'Security', icon: Shield },
-    { id: 'apps', name: 'Applications', icon: Monitor },
-    { id: 'system', name: 'System', icon: Server }
-  ]
-
+  // Загружаем конфигурацию устройства
   useEffect(() => {
     loadDeviceConfig()
   }, [macAddress])
@@ -36,11 +31,14 @@ const DeviceConfig = () => {
     try {
       setRefreshing(true)
       const data = await getDeviceConfig(macAddress)
-      console.log('Loaded config:', data)
-      
-      const processedData = processConfigData(data)
       setConfig(data)
-      setFormData(processedData)
+      
+      // Преобразуем данные в простой формат
+      const simpleData = {}
+      if (data?.config?.parameters?.provision) {
+        flattenObject(data.config.parameters.provision, 'provision', simpleData)
+      }
+      setFormData(simpleData)
     } catch (error) {
       console.error('Failed to load device config:', error)
     } finally {
@@ -49,310 +47,98 @@ const DeviceConfig = () => {
     }
   }
 
-  const processConfigData = (data) => {
-  if (!data?.config?.parameters) return initializeDefaultForm()
-  
-  const processed = {}
-  
-  // Рекурсивная функция для обработки любой структуры
-  const processObject = (obj, currentPath = '') => {
-    if (!obj || typeof obj !== 'object') return
-    
-    Object.entries(obj).forEach(([key, value]) => {
-      const newPath = currentPath ? `${currentPath}.${key}` : key
-      
-      if (typeof value === 'object' && value !== null) {
-        if (key.startsWith('@')) {
-          // Атрибуты (@reload, @value и т.д.)
-          processed[`${currentPath}${key}`] = String(value)
-        } else {
-          // Вложенные объекты - обрабатываем рекурсивно
-          processObject(value, newPath)
-        }
+  // Преобразуем вложенные объекты в плоскую структуру
+  const flattenObject = (obj, path = '', result = {}) => {
+    for (const key in obj) {
+      const newPath = path ? `${path}.${key}` : key
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        flattenObject(obj[key], newPath, result)
       } else {
-        // Простые значения
-        processed[newPath] = String(value)
+        result[newPath] = String(obj[key])
+      }
+    }
+  }
+
+  // Создаем вложенную структуру для API
+  const prepareDataForSave = () => {
+    const result = { provision: {} }
+    
+    Object.keys(formData).forEach(fullKey => {
+      if (fullKey.startsWith('provision.')) {
+        const path = fullKey.replace('provision.', '').split('.')
+        let current = result.provision
+        
+        for (let i = 0; i < path.length - 1; i++) {
+          const part = path[i]
+          if (!current[part]) {
+            current[part] = {}
+          }
+          current = current[part]
+        }
+        
+        const lastKey = path[path.length - 1]
+        current[lastKey] = formData[fullKey]
       }
     })
-  }
-  
-  // Обрабатываем всю структуру provision
-  if (data.config.parameters.provision) {
-    processObject(data.config.parameters.provision, 'provision')
-  }
-  
-  console.log('Processed form data from server:', processed)
-  
-  // Добавляем недостающие поля по умолчанию
-  const defaultForm = initializeDefaultForm()
-  const result = { ...defaultForm, ...processed }
-  
-  console.log('Final form data with defaults:', result)
-  return result
-}
-
-  const initializeDefaultForm = () => {
-    return {
-      // Provision attributes
-      'provision.@reload': '86400',
-      
-      // Basic services
-      'provision.provision_server.@name': '',
-      'provision.operator.@name': '',
-      'provision.syslog_host.@name': '',
-      'provision.update_server.@name': 'update.tvip.tv',
-      
-      // TR-069
-      'provision.tr69_server.@url': '',
-      'provision.tr69_server.@user': '',
-      'provision.tr69_server.@password': '',
-      
-      // Statistics
-      'provision.statistics.@url': '',
-      'provision.statistics.@accum_period': '45',
-      
-      // TV Stream
-      'provision.tv_stream.@type': 'multicast',
-      'provision.tv_stream.@server': '',
-      'provision.tv_stream.@tsbuffer': '0',
-      
-      // TV Protocols
-      'provision.tv_protocols.@default': 'jsonapi',
-      'provision.tv_protocols.@autostart': 'true',
-      
-      // Security
-      'provision.security.enabled.@value': 'false',
-      'provision.security.enabled.@force': 'false',
-      'provision.security.password.@value': '0000',
-      'provision.security.password.@force': 'false',
-      'provision.security.autolock_timeout.@value': '600',
-      
-      // UI Elements
-      'provision.logo.@url': '',
-      'provision.banner.@url': '',
-      'provision.bootlogo.@url': '',
-      
-      // Time
-      'provision.time.@tz': 'Europe/Moscow',
-      'provision.time.@ntp': 'pool.ntp.org',
-      'provision.time.@time_format': '24',
-      
-      // Features
-      'provision.features.tv.@enabled': 'true',
-      'provision.features.mediaplayer.@enabled': 'true',
-      'provision.features.dvr.@enabled': 'true',
-      'provision.features.cctv.@enabled': 'true',
-      'provision.features.vod.@enabled': 'true',
-      'provision.features.timeshift.@enabled': 'false',
-      
-      // Display
-      'provision.display.hd_format.@value': '1080p50',
-      'provision.display.aspect.@value': 'box',
-      'provision.display.cec.@value': 'false',
-      'provision.display.cec.@force': 'false',
-      
-      // System
-      'provision.auto_standby.@timeout': '0',
-      'provision.auto_standby.@force': 'false',
-      
-      // Updates
-      'provision.updates.update_period.@value': '86400',
-      'provision.updates.update_period.@force': 'false',
-      'provision.updates.update_background.@value': 'false',
-      'provision.updates.update_background.@force': 'false'
-    }
-  }
-
-  const prepareDataForSave = () => {
-    // Собираем данные в правильную структуру для API
-    const provisionData = {
-      '@reload': formData['provision.@reload'] || '86400',
-      provision_server: { '@name': formData['provision.provision_server.@name'] || '' },
-      operator: { '@name': formData['provision.operator.@name'] || '' },
-      syslog_host: { '@name': formData['provision.syslog_host.@name'] || '' },
-      update_server: { '@name': formData['provision.update_server.@name'] || '' }
-    }
-
-    // Добавляем опциональные поля если они заполнены
-    if (formData['provision.tr69_server.@url']) {
-      provisionData.tr69_server = {
-        '@url': formData['provision.tr69_server.@url'],
-        '@user': formData['provision.tr69_server.@user'] || '',
-        '@password': formData['provision.tr69_server.@password'] || ''
-      }
-    }
-
-    if (formData['provision.statistics.@url']) {
-      provisionData.statistics = {
-        '@url': formData['provision.statistics.@url'],
-        '@accum_period': formData['provision.statistics.@accum_period'] || '45'
-      }
-    }
-
-    if (formData['provision.tv_stream.@type']) {
-      provisionData.tv_stream = {
-        '@type': formData['provision.tv_stream.@type'],
-        '@server': formData['provision.tv_stream.@server'] || '',
-        '@tsbuffer': formData['provision.tv_stream.@tsbuffer'] || '0'
-      }
-    }
-
-    if (formData['provision.tv_protocols.@default']) {
-      provisionData.tv_protocols = {
-        '@default': formData['provision.tv_protocols.@default'],
-        '@autostart': formData['provision.tv_protocols.@autostart'] || 'true'
-      }
-    }
-
-    // Security
-    if (formData['provision.security.enabled.@value']) {
-      provisionData.security = {
-        enabled: {
-          '@value': formData['provision.security.enabled.@value'],
-          '@force': formData['provision.security.enabled.@force'] || 'false'
-        },
-        password: {
-          '@value': formData['provision.security.password.@value'] || '0000',
-          '@force': formData['provision.security.password.@force'] || 'false'
-        },
-        autolock_timeout: {
-          '@value': formData['provision.security.autolock_timeout.@value'] || '600'
-        }
-      }
-    }
-
-    // UI Elements
-    if (formData['provision.logo.@url']) {
-      provisionData.logo = { '@url': formData['provision.logo.@url'] }
-    }
-    if (formData['provision.banner.@url']) {
-      provisionData.banner = { '@url': formData['provision.banner.@url'] }
-    }
-    if (formData['provision.bootlogo.@url']) {
-      provisionData.bootlogo = { '@url': formData['provision.bootlogo.@url'] }
-    }
-
-    // Time
-    if (formData['provision.time.@tz']) {
-      provisionData.time = {
-        '@tz': formData['provision.time.@tz'],
-        '@ntp': formData['provision.time.@ntp'] || 'pool.ntp.org',
-        '@time_format': formData['provision.time.@time_format'] || '24'
-      }
-    }
-
-    // Features
-    provisionData.features = {
-      tv: { '@enabled': formData['provision.features.tv.@enabled'] || 'true' },
-      mediaplayer: { '@enabled': formData['provision.features.mediaplayer.@enabled'] || 'true' },
-      dvr: { '@enabled': formData['provision.features.dvr.@enabled'] || 'true' },
-      cctv: { '@enabled': formData['provision.features.cctv.@enabled'] || 'true' },
-      vod: { '@enabled': formData['provision.features.vod.@enabled'] || 'true' },
-      timeshift: { '@enabled': formData['provision.features.timeshift.@enabled'] || 'false' }
-    }
-
-    // Display
-    provisionData.display = {
-      hd_format: { '@value': formData['provision.display.hd_format.@value'] || '1080p50' },
-      aspect: { '@value': formData['provision.display.aspect.@value'] || 'box' },
-      cec: { 
-        '@value': formData['provision.display.cec.@value'] || 'false',
-        '@force': formData['provision.display.cec.@force'] || 'false'
-      }
-    }
-
-    // System
-    if (formData['provision.auto_standby.@timeout']) {
-      provisionData.auto_standby = {
-        '@timeout': formData['provision.auto_standby.@timeout'],
-        '@force': formData['provision.auto_standby.@force'] || 'false'
-      }
-    }
-
-    // Updates
-    provisionData.updates = {
-      update_period: {
-        '@value': formData['provision.updates.update_period.@value'] || '86400',
-        '@force': formData['provision.updates.update_period.@force'] || 'false'
-      },
-      update_background: {
-        '@value': formData['provision.updates.update_background.@value'] || 'false',
-        '@force': formData['provision.updates.update_background.@force'] || 'false'
-      }
-    }
-
-    return { provision: provisionData }
+    
+    console.log('Data to save:', result)
+    return result
   }
 
   const handleSave = async () => {
     try {
       const dataToSave = prepareDataForSave()
-      console.log('Saving data:', dataToSave)
       await updateDeviceConfig(macAddress, dataToSave)
       setEditing(false)
       loadDeviceConfig()
+      alert('Configuration saved successfully!')
     } catch (error) {
       console.error('Failed to update config:', error)
+      alert('Failed to save configuration')
     }
   }
 
   const handleReset = async () => {
-  if (window.confirm('Are you sure you want to reset all settings to default? This action cannot be undone.')) {
-    try {
-      await resetDeviceConfig(macAddress)
-      // Перезагружаем конфигурацию после сброса
-      await loadDeviceConfig()
-      setEditing(false)
-      alert('Configuration has been reset to default successfully!')
-    } catch (error) {
-      console.error('Failed to reset config:', error)
-      alert('Failed to reset configuration. Please try again.')
+    if (window.confirm('Reset all settings to default?')) {
+      try {
+        await resetDeviceConfig(macAddress)
+        loadDeviceConfig()
+        setEditing(false)
+        alert('Configuration reset successfully!')
+      } catch (error) {
+        console.error('Failed to reset config:', error)
+        alert('Failed to reset configuration')
+      }
     }
   }
-}
 
-  const renderField = (key, label, type = 'text', options = []) => {
+  // Рендерим поле ввода
+  const renderField = (fieldConfig) => {
+    const { key, label, type = 'text', options = [] } = fieldConfig
     const value = formData[key] || ''
-    
+
     return (
       <div key={key} className="param-row">
-        <label className="param-label" title={key}>
-          {label}
-        </label>
+        <label className="param-label">{label}</label>
         {editing ? (
           type === 'select' ? (
             <select
               value={value}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                [key]: e.target.value
-              }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
               className="param-select"
             >
+              <option value="">Not set</option>
               {options.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-          ) : type === 'textarea' ? (
-            <textarea
-              value={value}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                [key]: e.target.value
-              }))}
-              className="param-textarea"
-              rows={3}
-            />
           ) : (
             <input
               type={type}
               value={value}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                [key]: e.target.value
-              }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
               className="param-input"
             />
           )
@@ -363,51 +149,37 @@ const DeviceConfig = () => {
     )
   }
 
-  const renderBooleanField = (key, label, forceKey = null) => {
-    return (
-      <div className="boolean-field-group">
-        {renderField(key, label, 'select', [
-          { value: 'true', label: 'Enabled' },
-          { value: 'false', label: 'Disabled' }
-        ])}
-        {forceKey && renderField(forceKey, 'Force Setting', 'select', [
-          { value: 'true', label: 'Force' },
-          { value: 'false', label: 'Default' }
-        ])}
-      </div>
-    )
-  }
-
   if (loading) return <div className="loading">Loading configuration...</div>
   if (!config) return <div className="error">Device not found</div>
 
-  const ActiveTabIcon = tabs.find(tab => tab.id === activeTab)?.icon || Settings
+  const ActiveTabIcon = ICON_MAP[TABS.find(tab => tab.id === activeTab)?.icon] || Settings
 
   return (
     <div className="page device-config-page">
-      {/* Header */}
+      {/* Шапка */}
       <div className="page-header">
         <Link to="/devices" className="back-button">
           <ArrowLeft size={20} />
           Back to Devices
         </Link>
+        
         <div className="header-title">
-          {/* <h1>TVIP Configuration</h1> */}
           <div className="device-identity">
             <span className="mac-address">{config.device.mac_address}</span>
-            {/* <span className={`status-dot ${config.device.status || 'online'}`}></span> */}
           </div>
         </div>
+        
         <div className="actions">
           <button onClick={loadDeviceConfig} className="btn btn-secondary" disabled={refreshing}>
             <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
             Refresh
           </button>
+          
           {editing ? (
             <>
               <button onClick={handleSave} className="btn btn-primary">
                 <Save size={16} />
-                Save Configuration
+                Save
               </button>
               <button onClick={() => setEditing(false)} className="btn btn-secondary">
                 Cancel
@@ -420,19 +192,19 @@ const DeviceConfig = () => {
               </button>
               <button onClick={handleReset} className="btn btn-warning">
                 <RotateCcw size={16} />
-                Reset to Default
+                Reset
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Main Content with Tabs */}
+      {/* Основной контент */}
       <div className="config-container">
-        {/* Tabs Navigation */}
+        {/* Вкладки */}
         <div className="tabs-navigation">
-          {tabs.map(tab => {
-            const IconComponent = tab.icon
+          {TABS.map(tab => {
+            const IconComponent = ICON_MAP[tab.icon]
             return (
               <button
                 key={tab.id}
@@ -446,158 +218,17 @@ const DeviceConfig = () => {
           })}
         </div>
 
-        {/* Tab Content */}
+        {/* Содержимое вкладки */}
         <div className="tab-content">
           <div className="tab-header">
             <ActiveTabIcon size={20} />
-            <h2>{tabs.find(tab => tab.id === activeTab)?.name} Settings</h2>
+            <h2>{TABS.find(tab => tab.id === activeTab)?.name} Settings</h2>
           </div>
 
           <div className="config-section">
-            {activeTab === 'basic' && (
-              <div className="config-group">
-                <h3>Basic Provisioning</h3>
-                {renderField('provision.@reload', 'Reload Interval (seconds)', 'number')}
-                {renderField('provision.operator.@name', 'Operator Name')}
-                {renderField('provision.update_server.@name', 'Update Server')}
-                
-                <h3>Core Services</h3>
-                {renderField('provision.provision_server.@name', 'Provisioning Server')}
-                {renderField('provision.syslog_host.@name', 'Syslog Server')}
-              </div>
-            )}
-
-            {activeTab === 'network' && (
-              <div className="config-group">
-                <h3>TR-069 Configuration</h3>
-                {renderField('provision.tr69_server.@url', 'ACS URL')}
-                {renderField('provision.tr69_server.@user', 'ACS Username')}
-                {renderField('provision.tr69_server.@password', 'ACS Password', 'password')}
-                
-                <h3>Statistics</h3>
-                {renderField('provision.statistics.@url', 'Statistics Server')}
-                {renderField('provision.statistics.@accum_period', 'Statistics Period (sec)', 'number')}
-              </div>
-            )}
-
-            {activeTab === 'tv' && (
-              <div className="config-group">
-                <h3>TV Stream Settings</h3>
-                {renderField('provision.tv_stream.@type', 'Stream Type', 'select', [
-                  { value: 'multicast', label: 'Multicast' },
-                  { value: 'udpxy', label: 'UDP Proxy' }
-                ])}
-                {renderField('provision.tv_stream.@server', 'Stream Server')}
-                {renderField('provision.tv_stream.@tsbuffer', 'TS Buffer (ms)', 'number')}
-                
-                <h3>Protocol Configuration</h3>
-                {renderField('provision.tv_protocols.@default', 'Default Protocol', 'select', [
-                  { value: 'jsonapi', label: 'JSON API' },
-                  { value: 'm3u', label: 'M3U Playlist' },
-                  { value: 'browser', label: 'Web Portal' }
-                ])}
-                {renderField('provision.tv_protocols.@autostart', 'Auto Start TV', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-              </div>
-            )}
-
-            {activeTab === 'ui' && (
-              <div className="config-group">
-                <h3>Branding</h3>
-                {renderField('provision.logo.@url', 'Logo URL')}
-                {renderField('provision.banner.@url', 'Banner URL')}
-                {renderField('provision.bootlogo.@url', 'Boot Logo URL')}
-                
-                <h3>Time Settings</h3>
-                {renderField('provision.time.@tz', 'Time Zone')}
-                {renderField('provision.time.@ntp', 'NTP Server')}
-                {renderField('provision.time.@time_format', 'Time Format', 'select', [
-                  { value: '24', label: '24-hour' },
-                  { value: '12', label: '12-hour' }
-                ])}
-              </div>
-            )}
-
-            {activeTab === 'security' && (
-              <div className="config-group">
-                <h3>Parental Control</h3>
-                {renderBooleanField(
-                  'provision.security.enabled.@value', 
-                  'Security Enabled',
-                  'provision.security.enabled.@force'
-                )}
-                {renderField('provision.security.password.@value', 'Security Password', 'password')}
-                {renderField('provision.security.autolock_timeout.@value', 'Auto Lock Timeout (sec)', 'number')}
-              </div>
-            )}
-
-            {activeTab === 'apps' && (
-              <div className="config-group">
-                <h3>Application Features</h3>
-                {renderField('provision.features.tv.@enabled', 'TV App', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-                {renderField('provision.features.mediaplayer.@enabled', 'Media Player', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-                {renderField('provision.features.dvr.@enabled', 'DVR', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-                {renderField('provision.features.cctv.@enabled', 'CCTV', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-                {renderField('provision.features.vod.@enabled', 'VOD', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-                {renderField('provision.features.timeshift.@enabled', 'TimeShift', 'select', [
-                  { value: 'true', label: 'Enabled' },
-                  { value: 'false', label: 'Disabled' }
-                ])}
-              </div>
-            )}
-
-            {activeTab === 'system' && (
-              <div className="config-group">
-                <h3>Display Settings</h3>
-                {renderField('provision.display.hd_format.@value', 'HD Format', 'select', [
-                  { value: 'auto', label: 'Auto' },
-                  { value: '2160p50', label: '2160p50' },
-                  { value: '2160p60', label: '2160p60' },
-                  { value: '1080p50', label: '1080p50' },
-                  { value: '1080p60', label: '1080p60' },
-                  { value: '720p50', label: '720p50' },
-                  { value: '720p60', label: '720p60' }
-                ])}
-                {renderField('provision.display.aspect.@value', 'Aspect Ratio', 'select', [
-                  { value: 'box', label: 'Box' },
-                  { value: 'zoom', label: 'Zoom' },
-                  { value: 'full', label: 'Full' }
-                ])}
-                {renderBooleanField(
-                  'provision.display.cec.@value',
-                  'HDMI-CEC',
-                  'provision.display.cec.@force'
-                )}
-                
-                <h3>System Behavior</h3>
-                {renderField('provision.auto_standby.@timeout', 'Auto Standby (sec)', 'number')}
-                
-                <h3>Update Settings</h3>
-                {renderField('provision.updates.update_period.@value', 'Update Check Period (sec)', 'number')}
-                {renderBooleanField(
-                  'provision.updates.update_background.@value',
-                  'Background Update',
-                  'provision.updates.update_background.@force'
-                )}
-              </div>
-            )}
+            <div className="config-group">
+              {CONFIG_FIELDS[activeTab]?.map(field => renderField(field))}
+            </div>
           </div>
         </div>
       </div>
