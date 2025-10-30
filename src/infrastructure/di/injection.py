@@ -8,6 +8,7 @@ from application.use_cases.tvip_provision.handle_provision_request import Handle
 from application.use_cases.devices_management.get_device_config import GetDeviceConfigUseCase
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
 from application.use_cases.devices_management.reset_device_config import ResetDeviceConfigUseCase
+from application.use_cases.default_config_management.update_default_config import UpdateDefaultConfigUseCase
 from infrastructure.database.database import get_db
 from infrastructure.repositories.sql_device_repository import SQLDeviceRepository
 from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
@@ -64,5 +65,13 @@ def reset_device_config_use_case(
 ) -> ResetDeviceConfigUseCase:
     return ResetDeviceConfigUseCase(
         device_repo=device_repo,
+        provision_repo=provision_repo
+    )
+
+
+def update_default_config_use_case(
+    provision_repo: ProvisionRepository = Depends(get_provision_repository)
+) -> UpdateDefaultConfigUseCase:
+    return UpdateDefaultConfigUseCase(
         provision_repo=provision_repo
     )
