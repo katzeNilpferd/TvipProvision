@@ -18,6 +18,9 @@ class PydashConfigData(ConfigData):
         new_data = pydash.clone_deep(self.data)
 
         for path, value in updates.items():
+            if not path.startswith('provision.'):
+                path = f'provision.{path}'
+            
             pydash.set_(new_data, path, value)
             
         return PydashConfigData(new_data)
