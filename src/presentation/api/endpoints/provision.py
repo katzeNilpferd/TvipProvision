@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Response, HTTPException, Depends
 
-from application.use_cases.handle_provision_request import HandleProvisionRequestUseCase
+from application.use_cases.tvip_provision.handle_provision_request import HandleProvisionRequestUseCase
 from infrastructure.di.injection import get_handle_provision_use_case
 
 
