@@ -35,7 +35,7 @@ class GetDeviceConfigUseCase:
             },
             'config': {
                 'id': str(config.id),
-                'type': '#TODO',
+                'type': config.config_type.value.value,
                 'description': config.description,
                 'parameters': config.config_data.data
             }
