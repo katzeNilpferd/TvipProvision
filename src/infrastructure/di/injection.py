@@ -1,5 +1,5 @@
 from fastapi import Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.repositories.device_repository import DeviceRepository
 from domain.repositories.provision_repository import ProvisionRepository
@@ -16,11 +16,11 @@ from infrastructure.repositories.sql_provision_repository import SQLProvisionRep
 from infrastructure.serializers.xmltodict_serializer import XmlToDictSerializer
 
 
-def get_device_repository(db: Session = Depends(get_db)) -> DeviceRepository:
+def get_device_repository(db: AsyncSession = Depends(get_db)) -> DeviceRepository:
     return SQLDeviceRepository(db_session=db)
 
 
-def get_provision_repository(db: Session = Depends(get_db)) -> ProvisionRepository:
+def get_provision_repository(db: AsyncSession = Depends(get_db)) -> ProvisionRepository:
     return SQLProvisionRepository(db_session=db)
 
 

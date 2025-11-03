@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 import json
 from uuid import UUID
@@ -15,63 +16,75 @@ from infrastructure.factories.config_data_factory import ConfigDataFactory
 
 class SQLProvisionRepository(ProvisionRepository):
 
-    def __init__(self, db_session: Session) -> None:
+    def __init__(self, db_session: AsyncSession) -> None:
         self.db = db_session
-        self._ensure_default_config()
 
-    def _ensure_default_config(self) -> None:
-        default_config = self.db.query(ProvisionConfigModel).filter(
-            ProvisionConfigModel.config_type == ConfigType.DEFAULT.value
-        ).first()
-        
-        if not default_config:
-            try:
-                config_template = DefaultConfigService.get_default_config_template()
-                config_data = ConfigDataFactory.create(config_template)
-                
-                if not DefaultConfigService.validate_default_config(config_data):
-                    raise ValueError("Invalid default configuration")
-                
-                default_config = ProvisionConfigModel(
-                    config_json=json.dumps(config_data.data),
-                    config_type=ConfigType.DEFAULT.value,
-                    description="Default configuration for all devices"
-                )
-                self.db.add(default_config)
-                self.db.commit()
-            except (ValueError, IntegrityError) as e:
-                self.db.rollback()
+    async def _ensure_default_exists(self) -> None:
+        result = await self.db.execute(
+            select(ProvisionConfigModel).where(
+                ProvisionConfigModel.config_type == ConfigType.DEFAULT.value
+            )
+        )
+        default_config = result.scalar_one_or_none()
+
+        if default_config:
+            return
+
+        try:
+            config_template = DefaultConfigService.get_default_config_template()
+            config_data = ConfigDataFactory.create(config_template)
+
+            if not DefaultConfigService.validate_default_config(config_data):
+                raise ValueError("Invalid default configuration")
+
+            default_config = ProvisionConfigModel(
+                config_json=json.dumps(config_data.data),
+                config_type=ConfigType.DEFAULT.value,
+                description="Default configuration for all devices",
+            )
+            self.db.add(default_config)
+            await self.db.commit()
+        except (ValueError, IntegrityError):
+            await self.db.rollback()
     
     async def get_by_id(self, config_id: UUID) -> Optional[ProvisionConfig]:
-        db_config = self.db.query(ProvisionConfigModel).filter(
-            ProvisionConfigModel.id == config_id
-        ).first()
+        result = await self.db.execute(
+            select(ProvisionConfigModel).where(ProvisionConfigModel.id == config_id)
+        )
+        db_config = result.scalar_one_or_none()
         return self._to_entity(db_config) if db_config else None
 
     async def get_by_device(self, device: Device) -> Optional[ProvisionConfig]:
-        db_device = self.db.query(DeviceModel).filter(
-            DeviceModel.id == device.id
-        ).first()
+        result = await self.db.execute(
+            select(DeviceModel).where(DeviceModel.id == device.id)
+        )
+        db_device = result.scalar_one_or_none()
         if not db_device:
             return None
         
-        db_config = self.db.query(ProvisionConfigModel).filter(
-            ProvisionConfigModel.id == db_device.config_id
-        ).first()
+        result = await self.db.execute(
+            select(ProvisionConfigModel).where(ProvisionConfigModel.id == db_device.config_id)
+        )
+        db_config = result.scalar_one_or_none()
         return self._to_entity(db_config) if db_config else None
 
     async def get_default(self) -> ProvisionConfig:
-        db_config = self.db.query(ProvisionConfigModel).filter(
-            ProvisionConfigModel.config_type == ConfigType.DEFAULT.value
-        ).first()
+        await self._ensure_default_exists()
+        result = await self.db.execute(
+            select(ProvisionConfigModel).where(
+                ProvisionConfigModel.config_type == ConfigType.DEFAULT.value
+            )
+        )
+        db_config = result.scalar_one_or_none()
         if not db_config:
             raise ValueError("Default configuration not found")
         return self._to_entity(db_config)
 
     async def save(self, config: ProvisionConfig) -> ProvisionConfig:
-        db_config = self.db.query(ProvisionConfigModel).filter(
-            ProvisionConfigModel.id == config.id
-        ).first()
+        result = await self.db.execute(
+            select(ProvisionConfigModel).where(ProvisionConfigModel.id == config.id)
+        )
+        db_config = result.scalar_one_or_none()
 
         if db_config:
             #Update
@@ -87,13 +100,14 @@ class SQLProvisionRepository(ProvisionRepository):
             )
             self.db.add(db_config)
 
-        self.db.commit()
+        await self.db.commit()
         return self._to_entity(db_config)
     
     async def delete(self, config_id: UUID) -> bool:
-        db_config = self.db.query(ProvisionConfigModel).filter(
-            ProvisionConfigModel.id == config_id
-        ).first()
+        result = await self.db.execute(
+            select(ProvisionConfigModel).where(ProvisionConfigModel.id == config_id)
+        )
+        db_config = result.scalar_one_or_none()
         if not db_config:
             return False
         
@@ -101,7 +115,7 @@ class SQLProvisionRepository(ProvisionRepository):
             raise ValueError("Cannot delete the default configuration")
         
         self.db.delete(db_config)
-        self.db.commit()
+        await self.db.commit()
         return True
 
 
