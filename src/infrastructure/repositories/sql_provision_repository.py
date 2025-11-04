@@ -114,7 +114,7 @@ class SQLProvisionRepository(ProvisionRepository):
         if db_config.config_type == ConfigType.DEFAULT.value:
             raise ValueError("Cannot delete the default configuration")
         
-        self.db.delete(db_config)
+        await self.db.delete(db_config)
         await self.db.commit()
         return True
 

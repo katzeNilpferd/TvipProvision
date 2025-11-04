@@ -48,7 +48,7 @@ class SQLDeviceRepository(DeviceRepository):
         if not db_device:
             return False
         
-        self.db.delete(db_device)
+        await self.db.delete(db_device)
         await self.db.commit()
         return True
 

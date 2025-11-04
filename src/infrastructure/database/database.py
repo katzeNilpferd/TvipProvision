@@ -13,7 +13,14 @@ DATABASE_URL = os.getenv(
     "postgresql+asyncpg://postgres:postgres@localhost:5432/tvip_provision",
 )
 
-engine = create_async_engine(DATABASE_URL, future=True)
+engine = create_async_engine(
+    DATABASE_URL,
+    future=True,
+    pool_size=25,
+    max_overflow=50,
+    pool_pre_ping=True,
+    echo=False
+)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
