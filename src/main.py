@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from infrastructure.database.database import init_models
 
 from presentation.api.endpoints import (
     provision,
@@ -23,6 +24,10 @@ app.include_router(provision.router)
 app.include_router(devices_management.router)
 app.include_router(default_config_management.router)
 
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    await init_models()
 
 if __name__ == '__main__':
     import uvicorn

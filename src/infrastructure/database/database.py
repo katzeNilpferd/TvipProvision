@@ -1,24 +1,40 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+import os
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from infrastructure.database.models import Base
 
-
-engine = create_engine(
-    "sqlite:///./tvip_provision.db",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    # Example: postgresql+asyncpg://user:password@localhost:5432/tvip_provision
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/tvip_provision",
 )
 
-Base.metadata.create_all(bind=engine)
+engine = create_async_engine(
+    DATABASE_URL,
+    future=True,
+    pool_size=25,
+    max_overflow=50,
+    pool_pre_ping=True,
+    echo=False
+)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def init_models() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
