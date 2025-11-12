@@ -7,9 +7,11 @@ from domain.services.xml_serializer import XmlSerializer
 from application.use_cases.tvip_provision.handle_provision_request import HandleProvisionRequestUseCase
 from application.use_cases.devices_management.get_device_config import GetDeviceConfigUseCase
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
+from application.use_cases.devices_management.replace_device_config import ReplaceDeviceConfigUseCase
 from application.use_cases.devices_management.reset_device_config import ResetDeviceConfigUseCase
 from application.use_cases.default_config_management.get_default_config import GetDefaultConfigUseCase
 from application.use_cases.default_config_management.update_default_config import UpdateDefaultConfigUseCase
+from application.use_cases.default_config_management.replace_default_config import ReplaceDefaultConfigUseCase
 from infrastructure.database.database import get_db
 from infrastructure.repositories.sql_device_repository import SQLDeviceRepository
 from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
@@ -82,5 +84,23 @@ def update_default_config_use_case(
     provision_repo: ProvisionRepository = Depends(get_provision_repository)
 ) -> UpdateDefaultConfigUseCase:
     return UpdateDefaultConfigUseCase(
+        provision_repo=provision_repo
+    )
+
+
+def replace_device_config_use_case(
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    provision_repo: ProvisionRepository = Depends(get_provision_repository)
+) -> ReplaceDeviceConfigUseCase:
+    return ReplaceDeviceConfigUseCase(
+        device_repo=device_repo,
+        provision_repo=provision_repo
+    )
+
+
+def replace_default_config_use_case(
+    provision_repo: ProvisionRepository = Depends(get_provision_repository)
+) -> ReplaceDefaultConfigUseCase:
+    return ReplaceDefaultConfigUseCase(
         provision_repo=provision_repo
     )

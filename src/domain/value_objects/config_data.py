@@ -15,6 +15,9 @@ class ConfigData:
     def update(self, updates: dict[str, Any]) -> 'ConfigData':
         raise NotImplementedError()
     
+    def replace(self, new_data: dict[str, Any]) -> 'ConfigData':
+        raise NotImplementedError()
+    
     def validate_structure(self, required_params: Optional[list[str]] = None) -> bool:
         
         if required_params:

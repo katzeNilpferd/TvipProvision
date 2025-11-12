@@ -24,6 +24,17 @@ class PydashConfigData(ConfigData):
             pydash.set_(new_data, path, value)
             
         return PydashConfigData(new_data)
+    
+    def replace(self, new_data: dict[str, Any]) -> 'PydashConfigData':
+        data: dict[str, Any] = {}
+
+        for path, value in new_data.items():
+            if not path.startswith('provision.'):
+                path = f'provision.{path}'
+            
+            pydash.set_(data, path, value)
+            
+        return PydashConfigData(data)
 
     @classmethod
     def create(cls, data: dict[str, Any]) -> 'PydashConfigData':
