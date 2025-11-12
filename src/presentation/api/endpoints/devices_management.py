@@ -13,7 +13,7 @@ from infrastructure.di.injection import (
 )
 
 
-router = APIRouter()
+router = APIRouter(tags=['Devices-config'])
 
 
 @router.get('/api/devices/{mac_address}/config')
@@ -24,7 +24,7 @@ async def get_device_config(
     return await use_case.execute(mac_address)
 
 
-@router.put('/api/devices/{mac_address}/config')
+@router.put('/api/devices/{mac_address}/config/update')
 async def update_device_config(
     mac_address: str,
     updates: dict[str, Any],
@@ -42,7 +42,7 @@ async def replace_device_config(
     return await use_case.execute(mac_address, new_config)
 
 
-@router.post("/api/devices/{mac_address}/reset-config")
+@router.post("/api/devices/{mac_address}/config/reset")
 async def reset_device_config(
     mac_address: str,
     use_case: ResetDeviceConfigUseCase = Depends(reset_device_config_use_case)

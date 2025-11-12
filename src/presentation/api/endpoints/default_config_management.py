@@ -11,7 +11,7 @@ from infrastructure.di.injection import (
 )
 
 
-router = APIRouter()
+router = APIRouter(tags=['Default-config'])
 
 
 @router.get('/api/default/config')
@@ -21,7 +21,7 @@ async def get_default_config(
     return await use_case.execute()
 
 
-@router.put('/api/default/config')
+@router.put('/api/default/config/update')
 async def update_default_config(
     updates: dict[str, Any],
     use_case: UpdateDefaultConfigUseCase = Depends(update_default_config_use_case)
