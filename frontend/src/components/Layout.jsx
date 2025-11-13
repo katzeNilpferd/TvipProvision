@@ -22,6 +22,12 @@ const Layout = ({ children }) => {
               Devices
             </Link>
           </li>
+          <li className={location.pathname === '/default-config' ? 'active' : ''}>
+            <Link to="/default-config">
+              <Settings size={20} />
+              Default Config
+            </Link>
+          </li>
         </ul>
       </nav>
       
