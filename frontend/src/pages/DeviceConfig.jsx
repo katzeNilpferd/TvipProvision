@@ -4,7 +4,7 @@ import {
   ArrowLeft, Save, RotateCcw, RefreshCw, 
   Settings, Globe, Tv, Palette, Shield, Monitor, Server 
 } from 'lucide-react'
-import { getDeviceConfig, updateDeviceConfig, resetDeviceConfig } from '../services/api'
+import { getDeviceConfig, replaceDeviceConfig, resetDeviceConfig } from '../services/api'
 import { CONFIG_FIELDS, TABS } from './configFields'
 import './DeviceConfig.css'
 
@@ -21,6 +21,7 @@ const DeviceConfig = () => {
   const [formData, setFormData] = useState({})
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('basic')
+  const [saving, setSaving] = useState(false)
 
   // Загружаем конфигурацию устройства
   useEffect(() => {
@@ -59,42 +60,28 @@ const DeviceConfig = () => {
     }
   }
 
-  // Создаем вложенную структуру для API
+  // Создаем вложенную структуру для API (replace)
   const prepareDataForSave = () => {
-    const result = { provision: {} }
-    
-    Object.keys(formData).forEach(fullKey => {
-      if (fullKey.startsWith('provision.')) {
-        const path = fullKey.replace('provision.', '').split('.')
-        let current = result.provision
-        
-        for (let i = 0; i < path.length - 1; i++) {
-          const part = path[i]
-          if (!current[part]) {
-            current[part] = {}
-          }
-          current = current[part]
-        }
-        
-        const lastKey = path[path.length - 1]
-        current[lastKey] = formData[fullKey]
-      }
+    const fullConfig = {}
+
+    Object.entries(formData).forEach(([key, value]) => {
+      fullConfig[key] = value ?? ''
     })
-    
-    console.log('Data to save:', result)
-    return result
+
+    return fullConfig
   }
 
   const handleSave = async () => {
     try {
-      const dataToSave = prepareDataForSave()
-      await updateDeviceConfig(macAddress, dataToSave)
+      setSaving(true)
+      const dataToReplace = prepareDataForSave()
+      await replaceDeviceConfig(macAddress, dataToReplace)
       setEditing(false)
-      loadDeviceConfig()
-      alert('Configuration saved successfully!')
+      await loadDeviceConfig()
     } catch (error) {
-      console.error('Failed to update config:', error)
-      alert('Failed to save configuration')
+      console.error('Failed to save config:', error)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -104,10 +91,8 @@ const DeviceConfig = () => {
         await resetDeviceConfig(macAddress)
         loadDeviceConfig()
         setEditing(false)
-        alert('Configuration reset successfully!')
       } catch (error) {
         console.error('Failed to reset config:', error)
-        alert('Failed to reset configuration')
       }
     }
   }
@@ -177,9 +162,13 @@ const DeviceConfig = () => {
           
           {editing ? (
             <>
-              <button onClick={handleSave} className="btn btn-primary">
+              <button 
+                onClick={handleSave} 
+                className="btn btn-primary" 
+                disabled={saving}
+              >
                 <Save size={16} />
-                Save
+                {saving ? 'Saving...' : 'Save'}
               </button>
               <button onClick={() => setEditing(false)} className="btn btn-secondary">
                 Cancel
