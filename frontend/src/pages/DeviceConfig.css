@@ -3,6 +3,7 @@
   padding: 20px;
   background: var(--color-background);
   min-height: 100vh;
+  min-width: inherit;
 }
 
 .page-header {
@@ -236,7 +237,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .config-container {
     flex-direction: column;
   }

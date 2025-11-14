@@ -23,6 +23,7 @@
   font-size: 1.5em;
   font-weight: bold;
   margin-bottom: 10px;
+  min-width: max-content;
 }
 
 .sidebar ul {
@@ -53,8 +54,11 @@
 .content {
   flex: 1;
   padding: 20px;
+  padding-right: max(20%, 200px);
   background: var(--color-background);
   color: var(--color-text-primary);
+  min-width: 720px;
+  max-width: 100%;
 }
 
 .page-header {
