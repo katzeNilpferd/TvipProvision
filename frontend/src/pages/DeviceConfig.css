@@ -1,7 +1,7 @@
 /* DeviceConfig.css */
 .device-config-page {
   padding: 20px;
-  background: #f5f5f5;
+  background: var(--color-background);
   min-height: 100vh;
 }
 
@@ -10,11 +10,12 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  background: white;
+  background: var(--color-surface);
   gap: 25px;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-light);
 }
 
 .header-title {
@@ -32,7 +33,7 @@
 .mac-address {
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .status-dot {
@@ -42,7 +43,7 @@
 }
 
 .status-dot.online {
-  background: #4CAF50;
+  background: var(--color-success);
 }
 
 /* Tabs Navigation */
@@ -65,33 +66,34 @@
   gap: 8px;
   padding: 12px 16px;
   border: none;
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
   transition: all 0.2s;
   border-radius: 6px;
   text-align: left;
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .tab-button:hover {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
 }
 
 .tab-button.active {
-  background: #2196F3;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
   font-weight: 500;
 }
 
 /* Tab Content */
 .tab-content {
   flex: 1;
-  background: white;
+  background: var(--color-surface);
   border-radius: 8px;
   padding: 24px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-light);
 }
 
 .tab-header {
@@ -100,12 +102,12 @@
   gap: 12px;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--color-border-light);
 }
 
 .tab-header h2 {
   margin: 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 /* Configuration Groups */
@@ -116,8 +118,8 @@
 .config-group h3 {
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e0e0e0;
-  color: #444;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   font-size: 16px;
 }
 
@@ -126,34 +128,37 @@
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--color-border-light);
   gap: 16px;
 }
 
 .param-label {
   font-weight: 500;
-  color: #333;
+  color: var(--color-text-primary);
   min-width: 200px;
   font-size: 14px;
 }
 
 .param-input, .param-select, .param-textarea {
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-input-border);
   border-radius: 4px;
   font-size: 14px;
   flex: 1;
   max-width: 400px;
+  background: var(--color-input-background);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .param-input:focus, .param-select:focus, .param-textarea:focus {
   outline: none;
-  border-color: #2196F3;
-  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-input-focus);
 }
 
 .param-select {
-  background: white;
+  background: var(--color-input-background);
 }
 
 .param-textarea {
@@ -163,7 +168,7 @@
 }
 
 .param-value {
-  color: #666;
+  color: var(--color-text-secondary);
   flex: 1;
   max-width: 400px;
   font-size: 14px;
@@ -191,19 +196,19 @@
 }
 
 .btn-primary {
-  background: #2196F3;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
 }
 
 .btn-secondary {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
+  background: var(--color-secondary-bg);
+  color: var(--color-secondary-text);
+  border: 1px solid var(--color-secondary-border);
 }
 
 .btn-warning {
-  background: #FF9800;
-  color: white;
+  background: var(--color-warning);
+  color: var(--color-primary-contrast);
 }
 
 .btn:disabled {
@@ -215,7 +220,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #2196F3;
+  color: var(--color-primary);
   text-decoration: none;
   font-weight: 500;
 }
@@ -263,11 +268,11 @@
 }
 
 .boolean-field-group {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 12px;
-  background: #fafafa;
+  background: var(--color-surface-alt);
 }
 
 .boolean-field-group .param-row {
@@ -284,6 +289,6 @@
 }
 
 .param-value.empty {
-  color: #999;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
