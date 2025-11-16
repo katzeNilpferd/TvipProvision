@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from domain.value_objects.mac_address import MacAddress
+from domain.value_objects.ip_address import IpAddress
 from domain.entities.device import Device
 from domain.repositories.device_repository import DeviceRepository
 from infrastructure.database.models import DeviceModel
@@ -22,9 +23,10 @@ class SQLDeviceRepository(DeviceRepository):
 
         if db_device:
             #Update
-            db_device.model = device.model
-            db_device.last_activity = device.last_activity
-            db_device.config_id = device.config_id
+            db_device.model = device.model  # type: ignore
+            db_device.last_activity = device.last_activity  # type: ignore
+            db_device.ip_address = device.ip_address.value if device.ip_address else None  # type: ignore
+            db_device.config_id = device.config_id  # type: ignore
         else:
             #Create
             db_device = DeviceModel(
@@ -32,6 +34,7 @@ class SQLDeviceRepository(DeviceRepository):
                 mac_address = device.mac_address.value,
                 model = device.model,
                 last_activity = device.last_activity,
+                ip_address = device.ip_address.value if device.ip_address else None,
                 config_id = device.config_id
             )
             self.db.add(db_device)
@@ -69,16 +72,17 @@ class SQLDeviceRepository(DeviceRepository):
         if not db_device:
             return None
         
-        db_device.last_activity = datetime.utcnow()
+        db_device.last_activity = datetime.utcnow()  # type: ignore
         await self.db.commit()
         return self._to_entity(db_device)
 
     
     def _to_entity(self, db_device: DeviceModel) -> Device:
         return Device(
-            id=db_device.id,
-            mac_address=MacAddress(db_device.mac_address),
-            model=db_device.model,
-            last_activity=db_device.last_activity,
-            config_id=db_device.config_id
+            id=db_device.id,  # type: ignore
+            mac_address=MacAddress(db_device.mac_address),  # type: ignore
+            model=db_device.model,  # type: ignore
+            last_activity=db_device.last_activity,  # type: ignore
+            ip_address=IpAddress(db_device.ip_address) if db_device.ip_address else None,  # type: ignore
+            config_id=db_device.config_id  # type: ignore
         )

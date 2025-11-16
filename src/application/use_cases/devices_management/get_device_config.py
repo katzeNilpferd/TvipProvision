@@ -24,13 +24,14 @@ class GetDeviceConfigUseCase:
         
         config = await self.provision_repo.get_by_device(device)
         if not config:
-            config = self.provision_repo.get_default()
+            config = await self.provision_repo.get_default()
         
         return {
             'device': {
                 'id': str(device.id),
                 'mac_address': device.mac_address.value,
                 'model': device.model,
+                'ip_address': device.ip_address.value if device.ip_address else None,
                 'last_activity': device.last_activity
             },
             'config': {
