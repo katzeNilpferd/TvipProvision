@@ -22,6 +22,7 @@ class DeviceModel(Base):
     mac_address = Column(String(17), unique=True, index=True, nullable=False)
     model = Column(String(100), nullable=True)
     last_activity = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ip_address = Column(String(15), nullable=True)
     config_id = Column(UUID, ForeignKey('provision_configs.id'), nullable=False)
 
     provision_config = relationship('ProvisionConfigModel', back_populates='devices')

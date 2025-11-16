@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from domain.value_objects.mac_address import MacAddress
+from domain.value_objects.ip_address import IpAddress
 
 
 @dataclass
@@ -11,6 +12,7 @@ class Device:
     mac_address: MacAddress
     model: Optional[str] = None
     last_activity: Optional[datetime] = None
+    ip_address: Optional[IpAddress] = None
     id: UUID = field(default_factory=uuid4)
     config_id: Optional[UUID] = None
 
