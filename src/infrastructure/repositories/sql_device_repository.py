@@ -75,9 +75,36 @@ class SQLDeviceRepository(DeviceRepository):
         db_device.last_activity = datetime.utcnow()  # type: ignore
         await self.db.commit()
         return self._to_entity(db_device)
-    
-    async def get_all(self) -> list[Device]:
-        result = await self.db.execute(select(DeviceModel))
+
+    async def get_by_filters(
+        self,
+        ip_address: Optional[IpAddress] = None,
+        model: Optional[str] = None,
+        last_activity_from: Optional[datetime] = None,
+        last_activity_to: Optional[datetime] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None
+    ) -> list[Device]:
+        query = select(DeviceModel)
+        conditions = []
+
+        if ip_address:
+            conditions.append(DeviceModel.ip_address == ip_address.value)
+        if model:
+            conditions.append(DeviceModel.model == model)
+        if last_activity_from:
+            conditions.append(DeviceModel.last_activity >= last_activity_from)
+        if last_activity_to:
+            conditions.append(DeviceModel.last_activity <= last_activity_to)
+        
+        if conditions:
+            query = query.where(*conditions)
+        if limit is not None:
+            query = query.limit(limit)
+        if offset is not None:
+            query = query.offset(offset)
+
+        result = await self.db.execute(query)
         db_devices = result.scalars().all()
         return [self._to_entity(d) for d in db_devices]
 

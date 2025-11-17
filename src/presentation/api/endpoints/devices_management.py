@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from typing import Any
+from typing import Any, Optional
 
 from application.use_cases.devices_management.get_device_config import GetDeviceConfigUseCase
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
@@ -20,9 +20,15 @@ router = APIRouter(tags=['Devices-config'])
 
 @router.get('/api/devices')
 async def get_devices_list(
+    ip: Optional[str] = None,
+    model: Optional[str] = None,
+    last_activity_after: Optional[str] = None,
+    last_activity_before: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
     use_case: GetDevicesListUseCase = Depends(get_devices_list_use_case)
 ):
-    return await use_case.execute()
+    return await use_case.execute(ip, model, last_activity_after, last_activity_before, limit, offset)
 
 
 @router.get('/api/devices/{mac_address}/config')
