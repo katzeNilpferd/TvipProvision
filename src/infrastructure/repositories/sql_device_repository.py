@@ -85,24 +85,20 @@ class SQLDeviceRepository(DeviceRepository):
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> list[Device]:
-        query = select(DeviceModel)
         conditions = []
 
         if ip_address:
-            conditions.append(DeviceModel.ip_address == ip_address.value)
+            conditions.append(DeviceModel.ip_address == ip_address.value) 
         if model:
             conditions.append(DeviceModel.model == model)
         if last_activity_from:
             conditions.append(DeviceModel.last_activity >= last_activity_from)
         if last_activity_to:
             conditions.append(DeviceModel.last_activity <= last_activity_to)
-        
-        if conditions:
-            query = query.where(*conditions)
-        if limit is not None:
-            query = query.limit(limit)
-        if offset is not None:
-            query = query.offset(offset)
+
+        query = select(DeviceModel).where(*conditions)
+        query = query.limit(limit) if limit else query
+        query = query.offset(offset) if offset else query
 
         result = await self.db.execute(query)
         db_devices = result.scalars().all()
