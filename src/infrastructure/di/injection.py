@@ -9,6 +9,7 @@ from application.use_cases.devices_management.get_device_config import GetDevice
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
 from application.use_cases.devices_management.replace_device_config import ReplaceDeviceConfigUseCase
 from application.use_cases.devices_management.reset_device_config import ResetDeviceConfigUseCase
+from application.use_cases.devices_management.get_devices_list import GetDevicesListUseCase
 from application.use_cases.default_config_management.get_default_config import GetDefaultConfigUseCase
 from application.use_cases.default_config_management.update_default_config import UpdateDefaultConfigUseCase
 from application.use_cases.default_config_management.replace_default_config import ReplaceDefaultConfigUseCase
@@ -69,6 +70,14 @@ def reset_device_config_use_case(
     return ResetDeviceConfigUseCase(
         device_repo=device_repo,
         provision_repo=provision_repo
+    )
+
+
+def get_devices_list_use_case(
+    device_repo: DeviceRepository = Depends(get_device_repository)
+) -> GetDevicesListUseCase:
+    return GetDevicesListUseCase(
+        device_repo=device_repo
     )
 
 

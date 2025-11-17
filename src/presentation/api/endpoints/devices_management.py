@@ -5,15 +5,24 @@ from application.use_cases.devices_management.get_device_config import GetDevice
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
 from application.use_cases.devices_management.replace_device_config import ReplaceDeviceConfigUseCase
 from application.use_cases.devices_management.reset_device_config import ResetDeviceConfigUseCase
+from application.use_cases.devices_management.get_devices_list import GetDevicesListUseCase
 from infrastructure.di.injection import (
     get_device_config_use_case,
     update_device_config_use_case,
     replace_device_config_use_case,
-    reset_device_config_use_case
+    reset_device_config_use_case,
+    get_devices_list_use_case
 )
 
 
 router = APIRouter(tags=['Devices-config'])
+
+
+@router.get('/api/devices')
+async def get_devices_list(
+    use_case: GetDevicesListUseCase = Depends(get_devices_list_use_case)
+):
+    return await use_case.execute()
 
 
 @router.get('/api/devices/{mac_address}/config')

@@ -18,3 +18,6 @@ class DeviceRepository(ABC):
 
     @abstractmethod
     async def update_last_activity(self, mac_address: MacAddress) -> Optional[Device]: ...
+
+    @abstractmethod
+    async def get_all(self) -> list[Device]: ...

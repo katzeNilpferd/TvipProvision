@@ -75,8 +75,12 @@ class SQLDeviceRepository(DeviceRepository):
         db_device.last_activity = datetime.utcnow()  # type: ignore
         await self.db.commit()
         return self._to_entity(db_device)
-
     
+    async def get_all(self) -> list[Device]:
+        result = await self.db.execute(select(DeviceModel))
+        db_devices = result.scalars().all()
+        return [self._to_entity(d) for d in db_devices]
+
     def _to_entity(self, db_device: DeviceModel) -> Device:
         return Device(
             id=db_device.id,  # type: ignore
