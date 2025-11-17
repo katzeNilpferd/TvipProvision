@@ -10,8 +10,12 @@ const api = axios.create({
   withCredentials: false,
 })
 
-export const getDevices = async () => {
-  const response = await api.get('/devices')
+export const getDevices = async (params = {}) => {
+  // Filter out null/undefined/empty strings
+  const query = Object.fromEntries(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+  )
+  const response = await api.get('/devices', { params: query })
   return response.data
 }
 

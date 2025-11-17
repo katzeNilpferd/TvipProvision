@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Laptop, RefreshCw, Calendar, Network } from 'lucide-react'
+import { Laptop, RefreshCw, Calendar, Network, Info } from 'lucide-react'
 import { getDevices } from '../services/api'
 import './DevicesList.css'
 
@@ -8,15 +8,51 @@ const DevicesList = () => {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [searchText, setSearchText] = useState('')
+
+  const parseSearchQuery = (text) => {
+    const params = {}
+    const pairsRegex = /(\w+):"([^"]+)"|(\w+):'([^']+)'|(\w+):([^\s]+)/g
+    let match
+    while ((match = pairsRegex.exec(text)) !== null) {
+      const key = (match[1] || match[3] || match[5]).toLowerCase()
+      const value = match[2] || match[4] || match[6]
+      if (key === 'ip') params.ip = value
+      else if (key === 'model') params.model = value
+      else if (["last_activity_after","last_after","after"].includes(key)) {
+        const d = new Date(value)
+        if (!isNaN(d)) params.last_activity_after = d.toISOString()
+      } else if (["last_activity_before","last_before","before"].includes(key)) {
+        const d = new Date(value)
+        if (!isNaN(d)) params.last_activity_before = d.toISOString()
+      } else if (key === 'limit') {
+        const n = Number(value)
+        if (!isNaN(n)) params.limit = n
+      } else if (key === 'offset') {
+        const n = Number(value)
+        if (!isNaN(n)) params.offset = n
+      }
+    }
+    const freeText = text.replace(pairsRegex, '').trim()
+    if (freeText) {
+      const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
+      if (ipPattern.test(freeText)) params.ip = freeText
+      else params.model = freeText
+    }
+    return params
+  }
+
+  const buildParams = () => parseSearchQuery(searchText)
 
   useEffect(() => {
     loadDevices()
   }, [])
 
-  const loadDevices = async () => {
+  const loadDevices = async (overrideParams) => {
     try {
       setRefreshing(true)
-      const data = await getDevices()
+      const params = overrideParams ?? buildParams()
+      const data = await getDevices(params)
       setDevices(data)
     } catch (error) {
       console.error('Failed to load devices:', error)
@@ -24,6 +60,15 @@ const DevicesList = () => {
       setLoading(false)
       setRefreshing(false)
     }
+  }
+
+  const handleSearch = () => {
+    loadDevices()
+  }
+
+  const handleClear = () => {
+    setSearchText('')
+    loadDevices({})
   }
 
   const formatDate = (dateString) => {
@@ -50,7 +95,32 @@ const DevicesList = () => {
         </div>
         
         <div className="actions">
-          <button onClick={loadDevices} className="btn btn-secondary" disabled={refreshing}>
+          <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="search-form">
+            <input
+              type="text"
+              className="search-input"
+              placeholder='Search: ip:1.2.3.4 model:"TVIP S-520" after:2025-11-01 limit:20'
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <span className="info-button" role="button" tabIndex="0" aria-label="Search help">
+              <Info size={16} />
+              <div className="info-tooltip">
+                <div className="tooltip-title">Search parameters</div>
+                <ul>
+                  <li>ip:1.2.3.4</li>
+                  <li>model:s530</li>
+                  <li>after:2025-11-01 или 2025-11-01T00:00:00</li>
+                  <li>before:2025-11-05</li>
+                  <li>limit:20</li>
+                  <li>offset:0</li>
+                </ul>
+                <div className="tooltip-note">Параметры и их значения укаываются без дополнительных пробелов.</div>
+              </div>
+            </span>
+            <button type="submit" className="btn btn-primary">Search</button>
+          </form>
+          <button onClick={handleClear} className="btn btn-secondary" disabled={refreshing}>
             <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
             Refresh
           </button>
