@@ -145,7 +145,7 @@ const DeviceConfig = () => {
       <div className="page-header">
         <Link to="/devices" className="back-button">
           <ArrowLeft size={20} />
-          Back to Devices
+          Back
         </Link>
         
         <div className="header-title">

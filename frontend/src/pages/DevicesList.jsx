@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Laptop, RefreshCw, Calendar, Network, Info } from 'lucide-react'
+import { Laptop, RefreshCw, Calendar, Network, Info, MoveUp } from 'lucide-react'
 import { getDevices } from '../services/api'
 import './DevicesList.css'
 
@@ -8,6 +8,7 @@ const DevicesList = () => {
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const [searchText, setSearchText] = useState('')
 
   const parseSearchQuery = (text) => {
@@ -48,6 +49,15 @@ const DevicesList = () => {
     loadDevices()
   }, [])
 
+  useEffect(() => {
+    const onScroll = () => {
+      setShowScrollTop(window.pageYOffset > 300)
+    }
+    window.addEventListener('scroll', onScroll)
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const loadDevices = async (overrideParams) => {
     try {
       setRefreshing(true)
@@ -71,6 +81,10 @@ const DevicesList = () => {
     loadDevices({})
   }
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Never'
     const date = new Date(dateString)
@@ -91,7 +105,6 @@ const DevicesList = () => {
       <div className="page-header">
         <div className="header-title">
           <h1>Devices</h1>
-          <span className="device-count">{devices.length} device{devices.length !== 1 ? 's' : ''}</span>
         </div>
         
         <div className="actions">
@@ -168,6 +181,12 @@ const DevicesList = () => {
             </Link>
           ))
         )}
+      {/* Scroll to top */}
+      {showScrollTop && (
+        <button className="scroll-to-top" onClick={scrollToTop} aria-label="Back to top">
+          <MoveUp size={40} strokeWidth={4} />
+        </button>
+      )}
       </div>
     </div>
   )

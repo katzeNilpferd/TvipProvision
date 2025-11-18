@@ -134,10 +134,10 @@ const DefaultConfig = () => {
     <div className="page device-config-page">
       {/* Шапка */}
       <div className="page-header">
-        <Link to="/" className="back-button">
+        {/* <Link to="/" className="back-button">
           <ArrowLeft size={20} />
           Back
-        </Link>
+        </Link> */}
         
         <div className="header-title">
           <div className="device-identity">

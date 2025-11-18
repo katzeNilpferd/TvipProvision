@@ -34,6 +34,7 @@
 .mac-address {
   font-family: 'Courier New', monospace;
   font-weight: bold;
+  font-size: large;
   color: var(--color-text-primary);
 }
 
