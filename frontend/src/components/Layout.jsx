@@ -21,12 +21,12 @@ const Layout = ({ children }) => {
           <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
         <ul>
-          <li className={location.pathname === '/' ? 'active' : ''}>
+          {/* <li className={location.pathname === '/' ? 'active' : ''}>
             <Link to="/">
               <Home size={20} />
               Dashboard
             </Link>
-          </li>
+          </li> */}
           <li className={location.pathname === '/devices' ? 'active' : ''}>
             <Link to="/devices">
               <Wifi size={20} />
