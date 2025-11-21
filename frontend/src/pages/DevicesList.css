@@ -1,0 +1,300 @@
+/* DevicesList.css */
+.devices-list-page {
+  padding: 20px;
+  background: var(--color-background);
+  min-height: 100vh;
+  min-width: inherit;
+}
+
+.devices-list-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* margin-bottom: 24px; */
+  background: var(--color-surface);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.devices-list-page .header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.devices-list-page .header-title h1 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 24px;
+}
+
+.device-count {
+  padding: 4px 12px;
+  background: var(--color-surface-alt);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+/* Search in Header */
+.devices-list-page .actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.devices-list-page .actions .search-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.devices-list-page .actions .search-input {
+  flex: 1;
+  min-width: 280px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+/* Info tooltip */
+.devices-list-page .actions .info-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  cursor: help;
+  position: relative;
+}
+
+.devices-list-page .actions .info-button:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.devices-list-page .actions .info-tooltip {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  width: 280px;
+  padding: 10px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.devices-list-page .actions .info-button:hover .info-tooltip,
+.devices-list-page .actions .info-button:focus .info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.devices-list-page .actions .info-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--color-text-primary);
+}
+
+.devices-list-page .actions .info-tooltip ul {
+  margin: 0 0 6px 16px;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.devices-list-page .actions .info-tooltip .tooltip-note {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* Scroll To Top */
+.scroll-to-top {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  box-shadow: var(--shadow-md);
+  border: none;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.scroll-to-top:hover {
+  background: var(--color-primary-hover);
+}
+
+.scroll-to-top svg {
+  pointer-events: none;
+}
+
+/* Devices Grid */
+.devices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* Device Card */
+.device-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  box-shadow: var(--shadow-sm);
+}
+
+.device-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary);
+}
+
+.device-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.device-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary);
+  border-radius: 8px;
+  color: var(--color-primary-contrast);
+  flex-shrink: 0;
+}
+
+.device-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-model {
+  margin: 0 0 4px 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.device-mac {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+/* Device Details */
+.device-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.detail-row svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.detail-value {
+  color: var(--color-text-primary);
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Empty State */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+}
+
+.empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: var(--color-text-primary);
+  font-size: 18px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 16px;
+  color: var(--color-text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .devices-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .devices-list-page .page-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .devices-list-page .actions {
+    justify-content: flex-end;
+  }
+}
