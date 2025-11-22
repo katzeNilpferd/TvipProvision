@@ -11,6 +11,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    profiles:
+      - frontend
+    depends_on:
+      - tvip_provision
+
   postgres:
     image: postgres:16
     environment:
@@ -27,5 +37,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+
 volumes:
   pgdata:
