@@ -2,6 +2,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Копируем файлы зависимостей
+COPY .env ./
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
