@@ -11,6 +11,10 @@ __pycache__/
 dist/
 *.egg-info/
 
+# OS files
+.DS_Store
+Thumbs.db
+
 # Environments
 .env
 .venv
