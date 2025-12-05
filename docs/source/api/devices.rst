@@ -41,6 +41,10 @@ Query Parameters
      - string
      - Нет
      - Фильтр: активность до указанной даты (ISO 8601)
+   * - ``sort_by_last_activity``
+     - string
+     - Нет
+     - Сортировка по возрастанию/убыванию (по умолчанию: descending)
    * - ``limit``
      - integer
      - Нет
