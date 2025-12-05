@@ -2,9 +2,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from datetime import datetime
 
-from domain.entities.device import Device
 from domain.value_objects.mac_address import MacAddress
 from domain.value_objects.ip_address import IpAddress
+from domain.value_objects.sort_order import SortOrder
+from domain.entities.device import Device
 
 
 class DeviceRepository(ABC):
@@ -21,6 +22,7 @@ class DeviceRepository(ABC):
         model: Optional[str] = None,
         last_activity_from: Optional[datetime] = None,
         last_activity_to: Optional[datetime] = None,
+        sort_by_last_activity: Optional[SortOrder] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> list[Device]:

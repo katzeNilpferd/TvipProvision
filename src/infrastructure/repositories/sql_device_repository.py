@@ -5,6 +5,7 @@ from typing import Optional
 
 from domain.value_objects.mac_address import MacAddress
 from domain.value_objects.ip_address import IpAddress
+from domain.value_objects.sort_order import SortOrder
 from domain.entities.device import Device
 from domain.repositories.device_repository import DeviceRepository
 from infrastructure.database.models import DeviceModel
@@ -82,6 +83,7 @@ class SQLDeviceRepository(DeviceRepository):
         model: Optional[str] = None,
         last_activity_from: Optional[datetime] = None,
         last_activity_to: Optional[datetime] = None,
+        sort_by_last_activity: Optional[SortOrder] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> list[Device]:
@@ -97,6 +99,12 @@ class SQLDeviceRepository(DeviceRepository):
             conditions.append(DeviceModel.last_activity <= last_activity_to)
 
         query = select(DeviceModel).where(*conditions)
+        
+        if sort_by_last_activity == SortOrder.ASC:
+            query = query.order_by(DeviceModel.last_activity.asc())
+        elif sort_by_last_activity == SortOrder.DESC:
+            query = query.order_by(DeviceModel.last_activity.desc())
+        
         query = query.limit(limit) if limit else query
         query = query.offset(offset) if offset else query
 

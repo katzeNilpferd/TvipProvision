@@ -1,8 +1,9 @@
 from typing import Any, Optional
 from datetime import datetime
 
-from domain.repositories.device_repository import DeviceRepository
 from domain.value_objects.ip_address import IpAddress
+from domain.value_objects.sort_order import SortOrder
+from domain.repositories.device_repository import DeviceRepository
 
 
 class GetDevicesListUseCase:
@@ -10,7 +11,17 @@ class GetDevicesListUseCase:
     def __init__(self, device_repo: DeviceRepository):
         self.device_repo = device_repo
 
-    async def execute(self, ip: Optional[str] = None, model: Optional[str] = None, last_activity_after: Optional[str] = None, last_activity_before: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> list[dict[str, Any]]:
+    async def execute(
+            self,
+            ip: Optional[str] = None,
+            model: Optional[str] = None,
+            last_activity_after: Optional[str] = None,
+            last_activity_before: Optional[str] = None,
+            sort_by_last_activity: Optional[SortOrder] = None,
+            limit: Optional[int] = None,
+            offset: Optional[int] = None
+        ) -> list[dict[str, Any]]:
+
         ip_value_object = IpAddress(ip) if ip else None
         datetime_after = datetime.fromisoformat(last_activity_after) if last_activity_after else None
         datetime_before = datetime.fromisoformat(last_activity_before) if last_activity_before else None
@@ -20,6 +31,7 @@ class GetDevicesListUseCase:
             model=model,
             last_activity_from=datetime_after,
             last_activity_to=datetime_before,
+            sort_by_last_activity=sort_by_last_activity,
             limit=limit,
             offset=offset
         )

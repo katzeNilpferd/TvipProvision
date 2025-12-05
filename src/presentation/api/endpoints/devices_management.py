@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from typing import Any, Optional
 
+from domain.value_objects.sort_order import SortOrder
 from application.use_cases.devices_management.get_device_config import GetDeviceConfigUseCase
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
 from application.use_cases.devices_management.replace_device_config import ReplaceDeviceConfigUseCase
@@ -24,11 +25,20 @@ async def get_devices_list(
     model: Optional[str] = None,
     last_activity_after: Optional[str] = None,
     last_activity_before: Optional[str] = None,
+    sort_by_last_activity: Optional[SortOrder] = SortOrder.DESC,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
     use_case: GetDevicesListUseCase = Depends(get_devices_list_use_case)
 ):
-    return await use_case.execute(ip, model, last_activity_after, last_activity_before, limit, offset)
+    return await use_case.execute(
+        ip,
+        model,
+        last_activity_after,
+        last_activity_before,
+        sort_by_last_activity,
+        limit,
+        offset
+    )
 
 
 @router.get('/api/devices/{mac_address}/config')
