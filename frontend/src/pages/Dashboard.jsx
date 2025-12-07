@@ -39,7 +39,11 @@ const Dashboard = () => {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const onlineDevices = devicesData.filter(device => {
       if (!device.last_activity) return false
-      return new Date(device.last_activity) > oneDayAgo
+      let normalizedDateString = device.last_activity
+      if (!normalizedDateString.endsWith('Z')) {
+        normalizedDateString += 'Z'
+      }
+      return new Date(normalizedDateString) > oneDayAgo
     }).length
     // const offlineDevices = totalDevices - onlineDevices
     
@@ -59,13 +63,21 @@ const Dashboard = () => {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     const recentDevices = devicesData.filter(device => {
       if (!device.last_activity) return false
-      return new Date(device.last_activity) > sevenDaysAgo
+      let normalizedDateString = device.last_activity
+      if (!normalizedDateString.endsWith('Z')) {
+        normalizedDateString += 'Z'
+      }
+      return new Date(normalizedDateString) > sevenDaysAgo
     })
     
     // Group by date
     const activityByDate = {}
     recentDevices.forEach(device => {
-      const date = new Date(device.last_activity).toISOString().split('T')[0]
+      let normalizedDateString = device.last_activity
+      if (!normalizedDateString.endsWith('Z')) {
+        normalizedDateString += 'Z'
+      }
+      const date = new Date(normalizedDateString).toISOString().split('T')[0]
       activityByDate[date] = (activityByDate[date] || 0) + 1
     })
     

@@ -87,14 +87,40 @@ const DevicesList = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Never'
-    const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    
+    let normalizedDateString = dateString
+    if (!dateString.endsWith('Z')) {
+      normalizedDateString += 'Z'
+    }
+    
+    const date = new Date(normalizedDateString)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now - date) / 1000)
+    
+    // If the difference is negative or more than 30 days, show formatted date
+    if (diffInSeconds < 0 || diffInSeconds > 24 * 60 * 60) {
+      return date.toLocaleString('en-EN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+    
+    // Show relative time
+    if (diffInSeconds < 60) {
+      return 'Just now'
+    } else if (diffInSeconds < 60 * 60) {
+      const minutes = Math.floor(diffInSeconds / 60)
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+    } else if (diffInSeconds < 24 * 60 * 60) {
+      const hours = Math.floor(diffInSeconds / (60 * 60))
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    } else {
+      const days = Math.floor(diffInSeconds / (24 * 60 * 60))
+      return `${days} day${days > 1 ? 's' : ''} ago`
+    }
   }
 
   if (loading) return <div className="loading">Loading devices...</div>
