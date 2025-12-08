@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Laptop, RefreshCw, Calendar, Network, Info, MoveUp } from 'lucide-react'
+import { Laptop, RefreshCw, Calendar, Network, Info, MoveUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getDevices } from '../services/api'
 import './DevicesList.css'
+
+const DEFAULT_LIMIT = 24
 
 const DevicesList = () => {
   const [devices, setDevices] = useState([])
@@ -10,6 +12,13 @@ const DevicesList = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [pagination, setPagination] = useState({
+    offset: 0,
+    limit: DEFAULT_LIMIT,
+    total: 0,
+    hasNext: false,
+    hasPrev: false
+  })
 
   const parseSearchQuery = (text) => {
     const params = {}
@@ -26,12 +35,6 @@ const DevicesList = () => {
       } else if (["last_activity_before","last_before","before"].includes(key)) {
         const d = new Date(value)
         if (!isNaN(d)) params.last_activity_before = d.toISOString()
-      } else if (key === 'limit') {
-        const n = Number(value)
-        if (!isNaN(n)) params.limit = n
-      } else if (key === 'offset') {
-        const n = Number(value)
-        if (!isNaN(n)) params.offset = n
       }
     }
     const freeText = text.replace(pairsRegex, '').trim()
@@ -43,7 +46,14 @@ const DevicesList = () => {
     return params
   }
 
-  const buildParams = () => parseSearchQuery(searchText)
+  const buildParams = (overrideOffset) => {
+    const params = parseSearchQuery(searchText)
+    return {
+      ...params,
+      limit: params.limit || DEFAULT_LIMIT,
+      offset: overrideOffset !== undefined ? overrideOffset : params.offset || 0
+    }
+  }
 
   useEffect(() => {
     loadDevices()
@@ -58,27 +68,59 @@ const DevicesList = () => {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const loadDevices = async (overrideParams) => {
+  const loadDevices = useCallback(async (overrideParams) => {
     try {
       setRefreshing(true)
       const params = overrideParams ?? buildParams()
-      const data = await getDevices(params)
-      setDevices(data)
+      // Запрашиваем на один элемент больше, чтобы знать, есть ли следующая страница
+      const queryParams = { ...params, limit: (params.limit || DEFAULT_LIMIT) + 1 }
+      
+      const data = await getDevices(queryParams)
+      
+      const receivedCount = data.length
+      const currentLimit = params.limit || DEFAULT_LIMIT
+      const currentOffset = params.offset || 0
+      
+      // Проверяем, есть ли следующая страница
+      const hasNext = receivedCount > currentLimit
+      
+      // Если запросили больше, отрезаем лишний элемент
+      const devicesToShow = hasNext ? data.slice(0, currentLimit) : data
+      
+      setDevices(devicesToShow)
+      setPagination(prev => ({
+        ...prev,
+        offset: currentOffset,
+        limit: currentLimit,
+        hasNext,
+        hasPrev: currentOffset > 0,
+        total: hasNext ? currentOffset + receivedCount : currentOffset + devicesToShow.length
+      }))
     } catch (error) {
       console.error('Failed to load devices:', error)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [searchText])
 
   const handleSearch = () => {
-    loadDevices()
+    loadDevices({ ...buildParams(0), offset: 0 })
   }
 
   const handleClear = () => {
     setSearchText('')
-    loadDevices({})
+    loadDevices({ limit: DEFAULT_LIMIT, offset: 0 })
+  }
+
+  const handleNextPage = () => {
+    const newOffset = pagination.offset + pagination.limit
+    loadDevices({ ...buildParams(), offset: newOffset })
+  }
+
+  const handlePrevPage = () => {
+    const newOffset = Math.max(0, pagination.offset - pagination.limit)
+    loadDevices({ ...buildParams(), offset: newOffset })
   }
 
   const scrollToTop = () => {
@@ -97,7 +139,7 @@ const DevicesList = () => {
     const now = new Date()
     const diffInSeconds = Math.floor((now - date) / 1000)
     
-    // If the difference is negative or more than 30 days, show formatted date
+    // If the difference is negative or more than 1 day, show formatted date
     if (diffInSeconds < 0 || diffInSeconds > 24 * 60 * 60) {
       return date.toLocaleString('en-EN', {
         year: 'numeric',
@@ -138,7 +180,7 @@ const DevicesList = () => {
             <input
               type="text"
               className="search-input"
-              placeholder='Search: ip:1.2.3.4 model:"TVIP S-520" after:2025-11-01 limit:20'
+              placeholder='Search: ip:1.2.3.4 model:"TVIP S-520" after:2025-11-01'
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
             />
@@ -151,8 +193,6 @@ const DevicesList = () => {
                   <li>model:s530</li>
                   <li>after:2025-11-01 или 2025-11-01T00:00:00</li>
                   <li>before:2025-11-05</li>
-                  <li>limit:20</li>
-                  <li>offset:0</li>
                 </ul>
                 <div className="tooltip-note">Параметры и их значения укаываются без дополнительных пробелов.</div>
               </div>
@@ -207,13 +247,45 @@ const DevicesList = () => {
             </Link>
           ))
         )}
+      </div>
+      
+      {/* Pagination Footer */}
+      {devices.length > 0 && (
+        <div className="pagination-footer">
+          <div className="pagination-info">
+            Showing {pagination.offset + 1} to {Math.min(pagination.total, pagination.offset + devices.length)}
+            {pagination.total > pagination.offset + devices.length ? ` of ${pagination.total}+` : ''} devices
+          </div>
+          <div className="pagination-nav">
+            <button 
+              onClick={handlePrevPage} 
+              className="btn btn-secondary"
+              disabled={!pagination.hasPrev || refreshing}
+            >
+              <ChevronLeft size={16} />
+              Previous
+            </button>
+            <div className="page-indicator">
+              Page {Math.floor(pagination.offset / pagination.limit) + 1}
+            </div>
+            <button 
+              onClick={handleNextPage} 
+              className="btn btn-secondary"
+              disabled={!pagination.hasNext || refreshing}
+            >
+              Next
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Scroll to top */}
       {showScrollTop && (
         <button className="scroll-to-top" onClick={scrollToTop} aria-label="Back to top">
           <MoveUp size={40} strokeWidth={4} />
         </button>
       )}
-      </div>
     </div>
   )
 }
