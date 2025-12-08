@@ -52,7 +52,17 @@ const DeviceConfig = () => {
   const flattenObject = (obj, path = '', result = {}) => {
     for (const key in obj) {
       const newPath = path ? `${path}.${key}` : key
-      if (typeof obj[key] === 'object' && obj[key] !== null) {
+      
+      if (Array.isArray(obj[key])) {
+        // Обрабатываем массивы
+        obj[key].forEach((item, index) => {
+          if (typeof item === 'object' && item !== null) {
+            flattenObject(item, `${newPath}[${index}]`, result)
+          } else {
+            result[`${newPath}[${index}]`] = String(item)
+          }
+        })
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
         flattenObject(obj[key], newPath, result)
       } else {
         result[newPath] = String(obj[key])
