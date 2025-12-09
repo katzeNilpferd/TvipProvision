@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from domain.value_objects.mac_address import MacAddress
@@ -20,7 +20,7 @@ class Device:
 
     def update_last_activity(self) -> None:
         '''Updates the last activity timestamp to the current UTC time.'''
-        self.last_activity = datetime.utcnow()  # type: ignore
+        self.last_activity = datetime.now(tz=timezone.utc)
 
     def assign_config(self, config_id: UUID) -> None:
         '''Assigns a configuration ID to the device.'''

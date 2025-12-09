@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from domain.value_objects.mac_address import MacAddress
@@ -73,7 +73,7 @@ class SQLDeviceRepository(DeviceRepository):
         if not db_device:
             return None
         
-        db_device.last_activity = datetime.utcnow()  # type: ignore
+        db_device.last_activity = datetime.now(tz=timezone.utc)
         await self.db.commit()
         return self._to_entity(db_device)
 

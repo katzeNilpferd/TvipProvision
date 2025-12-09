@@ -1,5 +1,5 @@
-from sqlalchemy import (
-    Column, 
+from typing import Optional
+from sqlalchemy import ( 
     String, 
     Text, 
     ForeignKey, 
@@ -7,9 +7,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 Base = declarative_base()
@@ -18,12 +18,16 @@ Base = declarative_base()
 class DeviceModel(Base):
     __tablename__ = 'devices'
 
-    id = Column(UUID, primary_key=True, default=uuid.uuid4)
-    mac_address = Column(String(17), unique=True, index=True, nullable=False)
-    model = Column(String(100), nullable=True)
-    last_activity = Column(DateTime, default=datetime.utcnow, nullable=False)
-    ip_address = Column(String(15), nullable=True)
-    config_id = Column(UUID, ForeignKey('provision_configs.id'), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    mac_address: Mapped[str] = mapped_column(String(17), unique=True, index=True, nullable=False)
+    model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    last_activity: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    ip_address: Mapped[Optional[str]] = mapped_column(String(15), nullable=True)
+    config_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey('provision_configs.id'), nullable=False)
 
     provision_config = relationship('ProvisionConfigModel', back_populates='devices')
 
@@ -31,9 +35,9 @@ class DeviceModel(Base):
 class ProvisionConfigModel(Base):
     __tablename__ = 'provision_configs'
 
-    id = Column(UUID, primary_key=True, default=uuid.uuid4)
-    config_json = Column(Text, nullable=False)
-    config_type = Column(String(10), nullable=False)
-    description = Column(Text, default="")
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False)
+    config_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
 
     devices = relationship('DeviceModel', back_populates='provision_config')
