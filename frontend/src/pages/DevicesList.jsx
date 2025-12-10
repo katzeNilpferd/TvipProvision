@@ -130,12 +130,7 @@ const DevicesList = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'Never'
     
-    let normalizedDateString = dateString
-    if (!dateString.endsWith('Z')) {
-      normalizedDateString += 'Z'
-    }
-    
-    const date = new Date(normalizedDateString)
+    const date = new Date(dateString)
     const now = new Date()
     const diffInSeconds = Math.floor((now - date) / 1000)
     
