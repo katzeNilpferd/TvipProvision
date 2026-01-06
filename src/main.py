@@ -7,6 +7,9 @@ from presentation.api.endpoints import (
     devices_management,
     default_config_management
 )
+from config import settings
+
+AUTH_ENABLED = settings.auth_enabled
 
 
 app = FastAPI(title="TVIP Provisioning Service")
@@ -23,6 +26,10 @@ app.add_middleware(
 app.include_router(provision.router)
 app.include_router(devices_management.router)
 app.include_router(default_config_management.router)
+
+if AUTH_ENABLED:
+    from presentation.api.endpoints import auth
+    app.include_router(auth.router)
 
 
 @app.on_event("startup")
