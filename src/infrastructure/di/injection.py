@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.repositories.device_repository import DeviceRepository
 from domain.repositories.provision_repository import ProvisionRepository
+from domain.auth.repositories.user_repository import UserRepository
 from domain.services.xml_serializer import XmlSerializer
 from application.use_cases.tvip_provision.handle_provision_request import HandleProvisionRequestUseCase
 from application.use_cases.devices_management.get_device_config import GetDeviceConfigUseCase
@@ -13,10 +14,21 @@ from application.use_cases.devices_management.get_devices_list import GetDevices
 from application.use_cases.default_config_management.get_default_config import GetDefaultConfigUseCase
 from application.use_cases.default_config_management.update_default_config import UpdateDefaultConfigUseCase
 from application.use_cases.default_config_management.replace_default_config import ReplaceDefaultConfigUseCase
+from application.use_cases.auth.login_user import LoginUserUseCase
+from application.use_cases.auth.register_user import RegisterUserUseCase
+from application.use_cases.auth.verify_token import VerifyTokenUseCase
 from infrastructure.database.database import get_db
 from infrastructure.repositories.sql_device_repository import SQLDeviceRepository
 from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
 from infrastructure.serializers.xmltodict_serializer import XmlToDictSerializer
+from infrastructure.auth.repositories.sql_user_repository import SQLUserRepository
+from infrastructure.auth.jwt_provider import JWTProvider
+from infrastructure.auth.password_hasher import PasswordHasher
+from config import settings
+
+JWT_SECRET_KEY = settings.jwt_secret_key
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = settings.jwt_access_token_expire_minutes
+JWT_ALGORITHM = settings.jwt_algorithm
 
 
 def get_device_repository(db: AsyncSession = Depends(get_db)) -> DeviceRepository:
@@ -27,8 +39,24 @@ def get_provision_repository(db: AsyncSession = Depends(get_db)) -> ProvisionRep
     return SQLProvisionRepository(db_session=db)
 
 
+def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    return SQLUserRepository(db_session=db)
+
+
 def get_xml_serializer() -> XmlSerializer:
     return XmlToDictSerializer()
+
+
+def get_jwt_provider() -> JWTProvider:
+    return JWTProvider(
+        secret_key=JWT_SECRET_KEY,
+        access_token_expire_minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+        algorithm=JWT_ALGORITHM
+    )
+
+
+def get_password_hasher() -> PasswordHasher:
+    return PasswordHasher()
 
 
 def get_handle_provision_use_case(
@@ -112,4 +140,36 @@ def replace_default_config_use_case(
 ) -> ReplaceDefaultConfigUseCase:
     return ReplaceDefaultConfigUseCase(
         provision_repo=provision_repo
+    )
+
+
+def get_login_user_use_case(
+    user_repo: UserRepository = Depends(get_user_repository),
+    jwt_provider: JWTProvider = Depends(get_jwt_provider),
+    password_hasher: PasswordHasher = Depends(get_password_hasher)
+) -> LoginUserUseCase:
+    return LoginUserUseCase(
+        user_repo=user_repo,
+        jwt_provider=jwt_provider,
+        password_hasher=password_hasher
+    )
+
+
+def get_register_user_use_case(
+    user_repo: UserRepository = Depends(get_user_repository),
+    password_hasher: PasswordHasher = Depends(get_password_hasher)
+) -> RegisterUserUseCase:
+    return RegisterUserUseCase(
+        user_repo=user_repo,
+        password_hasher=password_hasher
+    )
+
+
+def get_verify_token_use_case(
+    user_repo: UserRepository = Depends(get_user_repository),
+    jwt_provider: JWTProvider = Depends(get_jwt_provider)
+) -> VerifyTokenUseCase:
+    return VerifyTokenUseCase(
+        user_repo=user_repo,
+        jwt_provider=jwt_provider
     )
