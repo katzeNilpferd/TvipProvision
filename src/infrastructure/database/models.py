@@ -41,3 +41,13 @@ class ProvisionConfigModel(Base):
     description: Mapped[str] = mapped_column(Text, default="")
 
     devices = relationship('DeviceModel', back_populates='provision_config')
+
+
+class UserModel(Base):
+    __tablename__ = 'users'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    is_admin: Mapped[bool] = mapped_column(default=False)
