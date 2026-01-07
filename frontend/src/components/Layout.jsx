@@ -1,11 +1,15 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Wifi, Settings, Home, Sun, Moon } from 'lucide-react'
+import { Wifi, Settings, Home, Sun, Moon, LogOut, User } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const Layout = ({ children }) => {
+  const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+
   const location = useLocation()
   const { theme, toggleTheme } = useTheme()
+  const { isAuthenticated, user, logout } = useAuth()
 
   return (
     <div className="layout">
@@ -40,6 +44,37 @@ const Layout = ({ children }) => {
             </Link>
           </li>
         </ul>
+        
+        {authEnabled && (
+          <div className="auth-section">
+            {isAuthenticated ? (
+              <div className="user-info">
+                <span className="username">
+                  <User size={14} />
+                  <span className="username-text">
+                    {user?.username && user.username.length > 18 
+                      ? `${user.username.substring(0, 18)}...` 
+                      : user?.username
+                    }
+                  </span>
+                </span>
+                <button
+                  className="logout-button"
+                  onClick={logout}
+                  aria-label="Logout"
+                >
+                  <LogOut size={16} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="login-button">
+                <span>Login</span>
+              </Link>
+            )}
+          </div>
+        )}
+        
       </nav>
       
       <main className="content">

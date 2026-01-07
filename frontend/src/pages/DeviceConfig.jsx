@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { getDeviceConfig, replaceDeviceConfig, resetDeviceConfig } from '../services/api'
 import { CONFIG_FIELDS, TABS } from './configFields'
+import { useAuth } from '../context/AuthContext'
 import './DeviceConfig.css'
 
 // Сопоставление иконок
@@ -14,7 +15,11 @@ const ICON_MAP = {
 }
 
 const DeviceConfig = () => {
+  const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+
   const { macAddress } = useParams()
+  const { isAuthenticated, user } = useAuth()
+  const isAdmin = authEnabled ? user?.is_admin === true : true
   const [config, setConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -90,6 +95,9 @@ const DeviceConfig = () => {
       await loadDeviceConfig()
     } catch (error) {
       console.error('Failed to save config:', error)
+      if (error.response?.status === 403) {
+        alert('Admin privileges required to save configuration')
+      }
     } finally {
       setSaving(false)
     }
@@ -103,6 +111,9 @@ const DeviceConfig = () => {
         setEditing(false)
       } catch (error) {
         console.error('Failed to reset config:', error)
+        if (error.response?.status === 403) {
+          alert('Admin privileges required to reset configuration')
+        }
       }
     }
   }
@@ -153,10 +164,12 @@ const DeviceConfig = () => {
     <div className="page device-config-page">
       {/* Шапка */}
       <div className="page-header">
-        <Link to="/devices" className="back-button">
-          <ArrowLeft size={20} />
-          Back
-        </Link>
+        {(!authEnabled || isAuthenticated) && (
+          <Link to="/devices" className="back-button">
+            <ArrowLeft size={20} />
+            Back
+          </Link>
+        )}
         
         <div className="header-title">
           <div className="device-identity">
@@ -175,7 +188,7 @@ const DeviceConfig = () => {
               <button 
                 onClick={handleSave} 
                 className="btn btn-primary" 
-                disabled={saving}
+                disabled={saving || (authEnabled && !isAuthenticated)}
               >
                 <Save size={16} />
                 {saving ? 'Saving...' : 'Save'}
@@ -186,13 +199,62 @@ const DeviceConfig = () => {
             </>
           ) : (
             <>
-              <button onClick={() => setEditing(true)} className="btn btn-primary">
-                Edit Configuration
-              </button>
-              <button onClick={handleReset} className="btn btn-warning">
-                <RotateCcw size={16} />
-                Reset
-              </button>
+              {authEnabled ? (
+                isAuthenticated ? (
+                  <>
+                    <button 
+                      onClick={() => setEditing(true)} 
+                      className="btn btn-primary"
+                      disabled={!isAdmin}
+                      title={!isAdmin ? "Admin privileges required to edit configuration" : ""}
+                    >
+                      Edit Configuration
+                    </button>
+                    <button 
+                      onClick={handleReset} 
+                      className="btn btn-warning"
+                      disabled={!isAdmin}
+                      title={!isAdmin ? "Admin privileges required to reset configuration" : ""}
+                    >
+                      <RotateCcw size={16} />
+                      Reset
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn btn-primary"
+                      title="Please log in to edit configuration"
+                      disabled
+                    >
+                      Edit Configuration
+                    </button>
+                    <button className="btn btn-warning"
+                      title="Please log in to reset configuration"
+                      disabled
+                    >
+                        <RotateCcw size={16} />
+                        Reset
+                    </button>
+                  </>
+                )
+              ) : (
+                // When auth is disabled, allow all operations
+                <>
+                  <button 
+                    onClick={() => setEditing(true)} 
+                    className="btn btn-primary"
+                  >
+                    Edit Configuration
+                  </button>
+                  <button 
+                    onClick={handleReset} 
+                    className="btn btn-warning"
+                  >
+                    <RotateCcw size={16} />
+                    Reset
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

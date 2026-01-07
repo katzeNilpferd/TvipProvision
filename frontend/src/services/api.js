@@ -10,6 +10,36 @@ const api = axios.create({
   withCredentials: false,
 })
 
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsedData = JSON.parse(authData);
+      const token = parsedData.token?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Remove token and redirect to login (this would be handled by the calling component)
+      localStorage.removeItem('authToken');
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const getDevices = async (params = {}) => {
   // Filter out null/undefined/empty strings
   const query = Object.fromEntries(
@@ -43,5 +73,20 @@ export const replaceDefaultConfig = async (newConfig) => {
   const response = await api.put('/api/default/config/replace', newConfig)
   return response.data
 }
+
+export const login = async (username, password) => {
+  const response = await api.post('/auth/login', { username, password });
+  return response;
+};
+
+export const register = async (username, password) => {
+  const response = await api.post('/auth/register', { username, password });
+  return response;
+};
+
+export const validateToken = async (token) => {
+  const response = await api.post('/auth/validate', { token });
+  return response.data;
+};
 
 export default api

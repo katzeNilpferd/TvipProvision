@@ -233,3 +233,81 @@ body[data-theme='light'] .theme-toggle {
   flex: 1;
   text-align: left;
 }
+
+.auth-section {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-sidebar-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.logout-button:hover {
+  background: var(--color-sidebar-hover);
+  color: var(--color-text-primary);
+}
+
+.logout-button svg {
+  flex-shrink: 0;
+}
+
+.login-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-sidebar-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.login-button:hover {
+  background: var(--color-sidebar-hover);
+  color: var(--color-text-primary);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.username {
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-sidebar-muted);
+  padding: 4px 14px;
+}
+
+.username-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
