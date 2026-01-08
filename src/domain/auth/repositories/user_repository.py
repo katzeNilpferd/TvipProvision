@@ -22,3 +22,11 @@ class UserRepository(ABC):
         hashed_password: str
     ) -> User:
         '''Creates a new User entity in the repository.'''
+
+    @abstractmethod
+    async def update_password(
+        self,
+        user: User,
+        hashed_password: str
+    ) -> None:
+        '''Updates the password of a User entity.'''
