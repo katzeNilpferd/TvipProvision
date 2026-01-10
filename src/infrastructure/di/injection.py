@@ -17,7 +17,7 @@ from application.use_cases.default_config_management.replace_default_config impo
 from application.use_cases.auth.login_user import LoginUserUseCase
 from application.use_cases.auth.register_user import RegisterUserUseCase
 from application.use_cases.auth.verify_token import VerifyTokenUseCase
-from application.use_cases.auth.change_password import ChangePasswordUseCase
+from application.use_cases.users.change_password import ChangePasswordUseCase
 from infrastructure.database.database import get_db
 from infrastructure.repositories.sql_device_repository import SQLDeviceRepository
 from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
