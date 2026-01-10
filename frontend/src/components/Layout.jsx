@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Wifi, Settings, Home, Sun, Moon, LogOut, User } from 'lucide-react'
+import { Wifi, Settings, Home, Sun, Moon, LogOut, User, Cog } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import UserProfileModal from './UserProfileModal.jsx'
 
 const Layout = ({ children }) => {
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const location = useLocation()
   const { theme, toggleTheme } = useTheme()
@@ -49,15 +51,25 @@ const Layout = ({ children }) => {
           <div className="auth-section">
             {isAuthenticated ? (
               <div className="user-info">
-                <span className="username">
-                  <User size={14} />
-                  <span className="username-text">
-                    {user?.username && user.username.length > 18 
-                      ? `${user.username.substring(0, 18)}...` 
-                      : user?.username
-                    }
+                <div className="user-header">
+                  <span className="username">
+                    <User size={14} />
+                    <span className="username-text">
+                      {user?.username && user.username.length > 18 
+                        ? `${user.username.substring(0, 18)}...` 
+                        : user?.username
+                      }
+                    </span>
                   </span>
-                </span>
+                  <button
+                    className="settings-button"
+                    onClick={() => setIsProfileModalOpen(true)}
+                    aria-label="Profile settings"
+                    title="Profile settings"
+                  >
+                    <Cog size={16} />
+                  </button>
+                </div>
                 <button
                   className="logout-button"
                   onClick={logout}
@@ -80,6 +92,11 @@ const Layout = ({ children }) => {
       <main className="content">
         {children}
       </main>
+      
+      <UserProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+      />
     </div>
   )
 }

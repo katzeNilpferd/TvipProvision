@@ -89,4 +89,12 @@ export const validateToken = async (token) => {
   return response.data;
 };
 
+export const changePassword = async (userId, currentPassword, newPassword) => {
+  const response = await api.post(`/api/users/${userId}/change-password`, {
+    current_password: currentPassword,
+    new_password: newPassword
+  });
+  return response.data;
+};
+
 export default api
