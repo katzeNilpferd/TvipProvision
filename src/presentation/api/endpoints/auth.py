@@ -18,7 +18,7 @@ from presentation.api.models.auth import (
 router = APIRouter(tags=['Authentication'])
 
 
-@router.post('/auth/login')
+@router.post('/api/auth/login')
 async def login(
     request: LoginRequest,
     use_case: LoginUserUseCase = Depends(get_login_user_use_case)
@@ -26,7 +26,7 @@ async def login(
     return await use_case.execute(request.username, request.password)
     
 
-@router.post('/auth/register')
+@router.post('/api/auth/register')
 async def register(
     request: RegisterRequest,
     use_case: RegisterUserUseCase = Depends(get_register_user_use_case)
@@ -34,7 +34,7 @@ async def register(
     return await use_case.execute(request.username, request.password)
 
 
-@router.post('/auth/validate')
+@router.post('/api/auth/validate')
 async def verify_token(
     request: VerifyTokenRequest,
     use_case: VerifyTokenUseCase = Depends(get_verify_token_use_case)

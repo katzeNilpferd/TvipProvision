@@ -75,17 +75,17 @@ export const replaceDefaultConfig = async (newConfig) => {
 }
 
 export const login = async (username, password) => {
-  const response = await api.post('/auth/login', { username, password });
+  const response = await api.post('/api/auth/login', { username, password });
   return response;
 };
 
 export const register = async (username, password) => {
-  const response = await api.post('/auth/register', { username, password });
+  const response = await api.post('/api/auth/register', { username, password });
   return response;
 };
 
 export const validateToken = async (token) => {
-  const response = await api.post('/auth/validate', { token });
+  const response = await api.post('/api/auth/validate', { token });
   return response.data;
 };
 
