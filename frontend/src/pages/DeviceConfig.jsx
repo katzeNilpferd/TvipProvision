@@ -28,6 +28,8 @@ const DeviceConfig = () => {
   const [activeTab, setActiveTab] = useState('basic')
   const [saving, setSaving] = useState(false)
 
+  const { handleUnauthorized } = useAuth();
+  
   // Загружаем конфигурацию устройства
   useEffect(() => {
     loadDeviceConfig()
@@ -47,6 +49,11 @@ const DeviceConfig = () => {
       setFormData(simpleData)
     } catch (error) {
       console.error('Failed to load device config:', error)
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        alert('Failed to load device configuration: ' + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -95,8 +102,12 @@ const DeviceConfig = () => {
       await loadDeviceConfig()
     } catch (error) {
       console.error('Failed to save config:', error)
-      if (error.response?.status === 403) {
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
         alert('Admin privileges required to save configuration')
+      } else {
+        alert('Failed to save configuration: ' + (error.response?.data?.detail || error.message));
       }
     } finally {
       setSaving(false)
@@ -111,8 +122,12 @@ const DeviceConfig = () => {
         setEditing(false)
       } catch (error) {
         console.error('Failed to reset config:', error)
-        if (error.response?.status === 403) {
+        if (error.response?.status === 401) {
+          handleUnauthorized();
+        } else if (error.response?.status === 403) {
           alert('Admin privileges required to reset configuration')
+        } else {
+          alert('Failed to reset configuration: ' + (error.response?.data?.detail || error.message));
         }
       }
     }

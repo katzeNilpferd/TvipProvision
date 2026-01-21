@@ -33,8 +33,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Remove token and redirect to login (this would be handled by the calling component)
-      localStorage.removeItem('authToken');
+      // Remove auth data and trigger logout
+      localStorage.removeItem('authData');
+      
+      // Redirect to login page if we're in browser environment
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

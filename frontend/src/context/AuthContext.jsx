@@ -77,6 +77,15 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   };
 
+  // Handle 401 unauthorized errors
+  const handleUnauthorized = () => {
+    logout();
+    // Redirect to login page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  };
+
   const value = {
     isAuthenticated,
     user,
@@ -84,6 +93,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    handleUnauthorized,
   };
 
   return (

@@ -29,6 +29,8 @@ const DefaultConfig = () => {
   const [activeTab, setActiveTab] = useState('basic')
   const [saving, setSaving] = useState(false)
 
+  const { handleUnauthorized } = useAuth();
+  
   // Загружаем дефолтную конфигурацию
   useEffect(() => {
     loadDefaultConfig()
@@ -49,7 +51,11 @@ const DefaultConfig = () => {
       setOriginalData(simpleData)
     } catch (error) {
       console.error('Failed to load default config:', error)
-      alert('Failed to load default configuration')
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        alert('Failed to load default configuration: ' + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -98,8 +104,12 @@ const DefaultConfig = () => {
       await loadDefaultConfig()
     } catch (error) {
       console.error('Failed to save config:', error)
-      if (error.response?.status === 403) {
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
         alert('Admin privileges required to save default configuration')
+      } else {
+        alert('Failed to save default configuration: ' + (error.response?.data?.detail || error.message));
       }
     } finally {
       setSaving(false)

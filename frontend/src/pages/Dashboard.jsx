@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Laptop, Calendar, Network, Activity, TrendingUp } from 'lucide-react'
 import { getDevices } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -15,6 +16,8 @@ const Dashboard = () => {
     recentActivity: []
   })
 
+  const { handleUnauthorized } = useAuth();
+  
   useEffect(() => {
     loadDevices()
   }, [])
@@ -26,6 +29,11 @@ const Dashboard = () => {
       calculateStats(data)
     } catch (error) {
       console.error('Failed to load devices:', error)
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        alert('Failed to load dashboard data: ' + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setLoading(false)
     }
