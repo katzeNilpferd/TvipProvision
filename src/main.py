@@ -28,9 +28,15 @@ app.include_router(devices_management.router)
 app.include_router(default_config_management.router)
 
 if AUTH_ENABLED:
-    from presentation.api.endpoints import auth, users_management
+    from presentation.api.endpoints import (
+        auth,
+        users_management,
+        ticket_management
+    )
     app.include_router(auth.router)
     app.include_router(users_management.router)
+    app.include_router(ticket_management.router)
+
 
 @app.on_event("startup")
 async def on_startup() -> None:
