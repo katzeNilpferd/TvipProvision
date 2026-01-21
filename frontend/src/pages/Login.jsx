@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
+import { forgotPassword, passwordRecovery } from '../services/api';
 import './Login.css';
 
 const Login = () => {
@@ -8,6 +10,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -83,14 +86,30 @@ const Login = () => {
         </form>
         
         <div className="login-footer">
-          <p>
-            Don't have an account?{' '}
-            <Link to="/register" className="login-link">
-              Create one here
-            </Link>
-          </p>
+          <div className="login-links">
+            <p>
+              Don't have an account?{' '}
+              <Link to="/register" className="login-link">
+                Create one here
+              </Link>
+            </p>
+            <button 
+              type="button"
+              className="forgot-password-link"
+              onClick={() => setShowForgotPasswordModal(true)}
+            >
+              Forgot password?
+            </button>
+          </div>
         </div>
       </div>
+      
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        onForgotPassword={forgotPassword}
+        onRecoverPassword={passwordRecovery}
+      />
     </div>
   );
 };

@@ -108,11 +108,63 @@
   margin-top: 0.25rem;
 }
 
+.form-description {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.modal-body {
+  padding: 0 1rem 1rem;
+}
+
+.forgot-password-form,
+.recover-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.form-actions .btn {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.forgot-password-modal {
+  max-width: 450px;
+}
+
+.forgot-password-modal .modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.forgot-password-modal .modal-header h2 svg {
+  color: var(--color-primary);
+}
+
 .login-footer {
   margin-top: 1.5rem;
-  text-align: center;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
+}
+
+.login-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .login-footer p {
@@ -129,4 +181,24 @@
 
 .login-link:hover {
   text-decoration: underline;
+}
+
+.forgot-password-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.forgot-password-link:hover {
+  text-decoration: underline;
+}
+
+.forgot-password-link:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }

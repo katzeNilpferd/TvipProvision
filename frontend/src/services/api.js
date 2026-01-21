@@ -97,4 +97,14 @@ export const changePassword = async (userId, currentPassword, newPassword) => {
   return response.data;
 };
 
+export const forgotPassword = async (requestData) => {
+  const response = await api.post('/api/users/forgot-password', requestData);
+  return response.data;
+};
+
+export const passwordRecovery = async (requestData) => {
+  const response = await api.post('/api/users/password-recovery', requestData);
+  return response.data;
+};
+
 export default api
