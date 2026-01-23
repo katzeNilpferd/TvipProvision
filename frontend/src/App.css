@@ -537,6 +537,7 @@ body[data-theme='light'] .theme-toggle {
 
 .modal-footer .btn {
   min-width: 100px;
+  justify-content: center;
 }
 
 .modal-header {
