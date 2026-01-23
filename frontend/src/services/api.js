@@ -112,4 +112,9 @@ export const passwordRecovery = async (requestData) => {
   return response.data;
 };
 
+export const getInProgressTickets = async () => {
+  const response = await api.get('/api/tickets/in-progress');
+  return response.data;
+};
+
 export default api
