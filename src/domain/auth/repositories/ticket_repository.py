@@ -16,6 +16,9 @@ class TicketRepository(ABC):
     ) -> Ticket:
         """Create a new ticket for a user for a specific event."""
 
+    async def get_ticket_by_id(self, ticket_id: int) -> Optional[Ticket]:
+        """Retrieve a ticket by its ID."""
+
     @abstractmethod
     async def get_tickets_by_username(self, username: str) -> list[Ticket]:
         """Retrieve all tickets for a given username."""

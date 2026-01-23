@@ -31,6 +31,15 @@ class SQLTicketRepository(TicketRepository):
         self.db.add(db_ticket)
         await self.db.commit()
         return self._to_entity(db_ticket)
+    
+    async def get_ticket_by_id(self, ticket_id: int) -> Optional[Ticket]:
+        result = await self.db.execute(
+            select(TicketModel).where(TicketModel.id == ticket_id)
+        )
+        db_ticket = result.scalar_one_or_none()
+        if db_ticket:
+            return self._to_entity(db_ticket)
+        return None
 
     async def get_tickets_by_username(self, username: str) -> list[Ticket]:
         result = await self.db.execute(
