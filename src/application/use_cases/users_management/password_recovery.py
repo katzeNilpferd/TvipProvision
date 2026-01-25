@@ -45,9 +45,10 @@ class PasswordRecoveryUseCase:
 
         new_hashed_password = self.password_hasher.hash_password(new_password)
         user.update_password(new_hashed_password)
+        valid_ticket.resolve()
         
         await self.user_repo.save(user=user)
-        await self.ticket_repo.update_ticket_status(valid_ticket, TicketStatus.RESOLVED)
+        await self.ticket_repo.save(ticket=valid_ticket)
 
         return {
             'user': {

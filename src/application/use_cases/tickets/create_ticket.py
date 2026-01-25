@@ -27,11 +27,13 @@ class CreateTicketUseCase:
 
         ticket = await self._get_existing_active_ticket(username, ticket_type)
         if not ticket:
-            ticket = await self.ticket_repo.create_ticket(
+            ticket = Ticket(
                 username=username,
                 ticket_type=ticket_type,
                 description=description
             )
+            ticket.generate_secret()
+            ticket = await self.ticket_repo.save(ticket)
 
         return {
             'user': {

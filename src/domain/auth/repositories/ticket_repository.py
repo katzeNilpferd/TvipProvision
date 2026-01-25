@@ -2,20 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from uuid import UUID
 
-from domain.auth.entities.ticket import Ticket, TicketType, TicketStatus
+from domain.auth.entities.ticket import Ticket
 
 
 class TicketRepository(ABC):
     """Abstract base class for ticket repository operations."""
-
-    @abstractmethod
-    async def create_ticket(
-        self,
-        username: str,
-        ticket_type: TicketType,
-        description: Optional[str] = None
-    ) -> Ticket:
-        """Create a new ticket for a user for a specific event."""
 
     @abstractmethod
     async def get_ticket_by_id(self, ticket_id: UUID) -> Optional[Ticket]:
@@ -30,5 +21,5 @@ class TicketRepository(ABC):
         """Retrieve an in-progress ticket for a user for a specific event."""
 
     @abstractmethod
-    async def update_ticket_status(self, ticket: Ticket, status: TicketStatus) -> None:
-        """Update the status of a ticket."""
+    async def save(self, ticket: Ticket) -> Ticket:
+        """Save or update a ticket in the repository."""
