@@ -44,7 +44,9 @@ class PasswordRecoveryUseCase:
             raise ValueError("Invalid secret key")
 
         new_hashed_password = self.password_hasher.hash_password(new_password)
-        await self.user_repo.update_password(user, new_hashed_password)
+        user.update_password(new_hashed_password)
+        
+        await self.user_repo.save(user=user)
         await self.ticket_repo.update_ticket_status(valid_ticket, TicketStatus.RESOLVED)
 
         return {

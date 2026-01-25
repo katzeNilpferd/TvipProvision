@@ -1,5 +1,6 @@
 from typing import Any
 
+from domain.auth.entities.user import User
 from domain.auth.repositories.user_repository import UserRepository
 from infrastructure.auth.password_hasher import PasswordHasher
 
@@ -21,11 +22,11 @@ class RegisterUserUseCase:
             raise ValueError(f"User '{username}' already exists")
         
         hashed_password = self.password_hasher.hash_password(password)
-        user = await self.user_repo.create_user(
+        user = User(
             username=username,
             hashed_password=hashed_password
         )
-
+        await self.user_repo.save(user=user)
         return {
             'user': {
                 'id': str(user.id),

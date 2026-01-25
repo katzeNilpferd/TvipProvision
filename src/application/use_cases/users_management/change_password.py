@@ -34,8 +34,9 @@ class ChangePasswordUseCase:
             raise ValueError("Current password is incorrect")
 
         new_hashed_password = self.password_hasher.hash_password(new_password)
-
-        await self.user_repo.update_password(user, new_hashed_password)
+        user.update_password(new_hashed_password)
+        
+        await self.user_repo.save(user=user)
         return {
             'user': {
                 'id': str(user.id),

@@ -16,17 +16,5 @@ class UserRepository(ABC):
         '''Retrieves a User entity by its username.'''
 
     @abstractmethod
-    async def create_user(
-        self,
-        username: str,
-        hashed_password: str
-    ) -> User:
-        '''Creates a new User entity in the repository.'''
-
-    @abstractmethod
-    async def update_password(
-        self,
-        user: User,
-        hashed_password: str
-    ) -> None:
-        '''Updates the password of a User entity.'''
+    async def save(self, user: User) -> User:
+        '''Saves or updates the User entity to the repository.'''
