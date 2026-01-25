@@ -26,7 +26,7 @@ from infrastructure.repositories.sql_device_repository import SQLDeviceRepositor
 from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
 from infrastructure.serializers.xmltodict_serializer import XmlToDictSerializer
 from infrastructure.auth.repositories.sql_user_repository import SQLUserRepository
-from infrastructure.auth.repositories.ticket_repository import SQLTicketRepository
+from infrastructure.auth.repositories.sql_ticket_repository import SQLTicketRepository
 from infrastructure.auth.jwt_provider import JWTProvider
 from infrastructure.auth.password_hasher import PasswordHasher
 from config import settings

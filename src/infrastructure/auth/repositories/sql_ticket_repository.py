@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 from datetime import datetime, timezone
+from uuid import UUID
 
 from domain.auth.entities.ticket import Ticket, TicketType, TicketStatus
 from domain.auth.repositories.ticket_repository import TicketRepository
@@ -32,7 +33,7 @@ class SQLTicketRepository(TicketRepository):
         await self.db.commit()
         return self._to_entity(db_ticket)
     
-    async def get_ticket_by_id(self, ticket_id: int) -> Optional[Ticket]:
+    async def get_ticket_by_id(self, ticket_id: UUID) -> Optional[Ticket]:
         result = await self.db.execute(
             select(TicketModel).where(TicketModel.id == ticket_id)
         )
