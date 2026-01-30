@@ -43,6 +43,31 @@ async def change_user_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.post('/api/users/{user_id}/upgrade-privilege')
+async def upgrade_privilege(
+    user_id: str,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    use_case: CreateTicketUseCase = Depends(get_create_ticket_use_case)
+):
+    username = current_user.get('username')
+    if not username or current_user.get('id') != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only request privilege upgrade for your own account"
+        )
+    ticket_type = TicketType.PRIVILEGE_UPGRADE
+    description = f'User {username} requests privilege upgrade.'
+
+    try:
+        return await use_case.execute(
+            username=username,
+            ticket_type=ticket_type,
+            description=description
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.post('/api/users/forgot-password')
 async def forgot_user_password(
     request: CreateTicketRequest,
