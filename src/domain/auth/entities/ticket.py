@@ -49,3 +49,10 @@ class Ticket:
         self.status = TicketStatus.RESOLVED
         self.resolved_at = datetime.now(tz=timezone.utc)
         self.resolved_by = resolved_by
+
+    def reject(self, resolved_by: Optional[str] = None) -> None:
+        '''Marks the ticket as rejected.'''
+
+        self.status = TicketStatus.REJECTED
+        self.resolved_at = datetime.now(tz=timezone.utc)
+        self.resolved_by = resolved_by
