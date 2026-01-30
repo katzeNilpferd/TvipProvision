@@ -5,6 +5,10 @@ from domain.repositories.device_repository import DeviceRepository
 from domain.repositories.provision_repository import ProvisionRepository
 from domain.auth.repositories.user_repository import UserRepository
 from domain.services.xml_serializer import XmlSerializer
+from domain.auth.entities.ticket import TicketType
+from application.handlers.tickets.base import BaseTicketHandler
+from application.handlers.tickets.account_unlock import AccountUnlockHandler
+from application.handlers.tickets.privilege_upgrade import PrivilegeUpgradeHandler
 from application.use_cases.tvip_provision.handle_provision_request import HandleProvisionRequestUseCase
 from application.use_cases.devices_management.get_device_config import GetDeviceConfigUseCase
 from application.use_cases.devices_management.update_device_config import UpdateDeviceConfigUseCase
@@ -21,6 +25,8 @@ from application.use_cases.users_management.change_password import ChangePasswor
 from application.use_cases.users_management.password_recovery import PasswordRecoveryUseCase
 from application.use_cases.tickets.create_ticket import CreateTicketUseCase
 from application.use_cases.tickets.get_in_progress_ticket import GetInProgressTicketUseCase
+from application.use_cases.tickets.approve_ticket import ApproveTicketUseCase
+from application.use_cases.tickets.reject_ticket import RejectTicketUseCase
 from infrastructure.database.database import get_db
 from infrastructure.repositories.sql_device_repository import SQLDeviceRepository
 from infrastructure.repositories.sql_provision_repository import SQLProvisionRepository
@@ -224,3 +230,31 @@ def get_in_progress_ticket_use_case(
     return GetInProgressTicketUseCase(
         ticket_repo=ticket_repo
     )
+
+
+def get_type_ticket_handler() -> dict[TicketType, BaseTicketHandler]:
+    return {
+        TicketType.PRIVILEGE_UPGRADE: PrivilegeUpgradeHandler(),
+        TicketType.ACCOUNT_UNLOCK: AccountUnlockHandler()
+    }
+
+
+def get_approve_ticket_use_case(
+    ticket_repo: SQLTicketRepository = Depends(get_ticket_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
+    ticket_handler: dict[TicketType, BaseTicketHandler] = Depends(get_type_ticket_handler)
+) -> ApproveTicketUseCase:
+    return ApproveTicketUseCase(
+        ticket_repo=ticket_repo,
+        user_repo=user_repo,
+        ticket_handler=ticket_handler
+    )
+
+
+def get_reject_ticket_use_case(
+    ticket_repo: SQLTicketRepository = Depends(get_ticket_repository)
+) -> RejectTicketUseCase:
+    return RejectTicketUseCase(
+        ticket_repo=ticket_repo
+    )
+
