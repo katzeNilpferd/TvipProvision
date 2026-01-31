@@ -117,4 +117,14 @@ export const getInProgressTickets = async () => {
   return response.data;
 };
 
+export const approveTicket = async (ticketId) => {
+  const response = await api.post(`/api/tickets/${ticketId}/approve`);
+  return response.data;
+};
+
+export const rejectTicket = async (ticketId) => {
+  const response = await api.post(`/api/tickets/${ticketId}/reject`);
+  return response.data;
+};
+
 export default api

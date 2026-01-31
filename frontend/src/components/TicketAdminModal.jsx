@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { X, Ticket, Clock, User, Calendar, Key, CheckCircle, AlertCircle } from 'lucide-react'
-import { getInProgressTickets } from '../services/api'
+import { X, Ticket, Clock, User, Calendar, Key, CheckCircle, AlertCircle, Check, XCircle } from 'lucide-react'
+import { getInProgressTickets, approveTicket, rejectTicket } from '../services/api'
 
 const TicketAdminModal = ({ isOpen, onClose }) => {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(false)
+  const [processingTicketId, setProcessingTicketId] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
   const [error, setError] = useState('')
+  const [revealedSecrets, setRevealedSecrets] = useState(new Set())
 
   useEffect(() => {
     if (isOpen) {
@@ -32,7 +35,48 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
   const handleClose = () => {
     setTickets([])
     setError('')
+    setSuccessMessage('')
+    setProcessingTicketId(null)
+    setRevealedSecrets(new Set())
     onClose()
+  }
+
+  const handleApproveTicket = async (ticketId) => {
+    setProcessingTicketId(ticketId)
+    setError('')
+    setSuccessMessage('')
+    
+    try {
+      await approveTicket(ticketId)
+      setSuccessMessage('Ticket approved successfully')
+      // Reload tickets to show updated status
+      await loadTickets()
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to approve ticket'
+      setError(errorMessage)
+      console.error('Error approving ticket:', err)
+    } finally {
+      setProcessingTicketId(null)
+    }
+  }
+
+  const handleRejectTicket = async (ticketId) => {
+    setProcessingTicketId(ticketId)
+    setError('')
+    setSuccessMessage('')
+    
+    try {
+      await rejectTicket(ticketId)
+      setSuccessMessage('Ticket rejected successfully')
+      // Reload tickets to show updated status
+      await loadTickets()
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to reject ticket'
+      setError(errorMessage)
+      console.error('Error rejecting ticket:', err)
+    } finally {
+      setProcessingTicketId(null)
+    }
   }
 
   const formatDate = (dateString) => {
@@ -44,6 +88,8 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
     switch (type) {
       case 'forgot_password':
         return 'Forgot Password'
+      case 'privilege_upgrade':
+        return 'Privilege Upgrade'
       default:
         return type
     }
@@ -74,6 +120,13 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
         </div>
         
         <div className="modal-body">
+          {successMessage && (
+            <div className="success-message">
+              <CheckCircle size={16} />
+              {successMessage}
+            </div>
+          )}
+          
           {error && (
             <div className="error-message">
               <AlertCircle size={16} />
@@ -94,7 +147,7 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
           ) : (
             <div className="tickets-list">
               {tickets.map((ticket) => (
-                <div key={ticket.id} className="ticket-card">
+                <div key={ticket.id} className="ticket-card" data-ticket-id={ticket.id}>
                   <div className="ticket-header">
                     <div className="ticket-type">
                       <Ticket size={16} />
@@ -121,9 +174,14 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
                     </div>
                     
                     {ticket.secret && (
-                      <div className="ticket-field secret-field">
+                      <div 
+                        className={`ticket-field secret-field ${revealedSecrets.has(ticket.id) ? 'revealed' : 'blurred'}`}
+                      >
                         <Key size={16} />
-                        <span><strong>Secret Code:</strong> {ticket.secret}</span>
+                        <span>
+                          <strong>Secret Code:</strong> 
+                          <span className="secret-code">{ticket.secret}</span>
+                        </span>
                         <small>{ticket.secret_hint}</small>
                       </div>
                     )}
@@ -132,6 +190,67 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
                       <div className="ticket-field">
                         <span><strong>Description:</strong> {ticket.description}</span>
                       </div>
+                    )}
+                  </div>
+                  
+                  <div className="ticket-actions">
+                    {ticket.ticket_type === 'forgot_password' ? (
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => {
+                          // Reveal the secret code
+                          setRevealedSecrets(prev => new Set([...prev, ticket.id]));
+                          
+                          // Scroll to secret field and highlight it
+                          setTimeout(() => {
+                            const secretField = document.querySelector(`[data-ticket-id="${ticket.id}"] .secret-field`);
+                            if (secretField) {
+                              secretField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              secretField.style.animation = 'highlight 2s';
+                            }
+                          }, 100);
+                        }}
+                      >
+                        <Key size={16} />
+                        Show Secret
+                      </button>
+                    ) : (
+                      <>
+                        <button 
+                          className="btn btn-success" 
+                          onClick={() => handleApproveTicket(ticket.id)}
+                          disabled={processingTicketId === ticket.id}
+                        >
+                          {processingTicketId === ticket.id ? (
+                            <>
+                              <div className="spinner-small"></div>
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <Check size={16} />
+                              Approve
+                            </>
+                          )}
+                        </button>
+                        <button 
+                          className="btn btn-danger" 
+                          onClick={() => handleRejectTicket(ticket.id)}
+                          disabled={processingTicketId === ticket.id}
+                        >
+                          {processingTicketId === ticket.id ? (
+                            <>
+                              <div className="spinner-small"></div>
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={16} />
+                              Reject
+                            </>
+                          )}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
