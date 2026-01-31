@@ -606,7 +606,7 @@ body[data-theme='light'] .theme-toggle {
 }
 
 .btn-success:hover:not(:disabled) {
-  background: var(--color-success-dark);
+  background: var(--color-success-hover);
 }
 
 .btn-success:disabled {
@@ -624,7 +624,7 @@ body[data-theme='light'] .theme-toggle {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--color-danger-dark);
+  background: var(--color-danger-hover);
 }
 
 .btn-danger:disabled {
