@@ -53,6 +53,7 @@ class UserModel(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
+    is_root: Mapped[bool] = mapped_column(default=False)
 
 
 class TicketModel(Base):

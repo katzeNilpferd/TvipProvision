@@ -10,6 +10,7 @@ class User():
     hashed_password: str
     is_active: bool = True
     is_admin: bool = False
+    is_root: bool = False
     id: UUID = field(default_factory=uuid4)
 
     def update_password(self, new_hashed_password: str) -> None:
