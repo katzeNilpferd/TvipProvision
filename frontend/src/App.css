@@ -624,6 +624,77 @@ body[data-theme='light'] .theme-toggle {
   border-bottom: 1px solid var(--color-border-light);
 }
 
+.admin-status-section {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.admin-status-section h3 {
+  margin-right: 10px;
+  color: var(--color-text-primary);
+  font-size: 1.1rem;
+}
+
+.status-header {
+  display: flex;
+  /* justify-content: space-between; */
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.status-display {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.admin-status p,
+.user-status p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.admin-status,
+.user-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: white;
+}
+
+.status-badge.admin {
+  background: var(--color-success);
+}
+
+.status-badge.user {
+  background: var(--color-secondary-bg);
+}
+
+.btn-upgrade {
+  margin-top: 8px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.btn-upgrade:hover {
+  background: var(--color-primary-hover);
+}
+
 /* Ticket Actions */
 .ticket-actions {
   display: flex;

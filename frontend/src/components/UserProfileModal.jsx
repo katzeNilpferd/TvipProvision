@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { X, Key, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { changePassword } from '../services/api'
+import { changePassword, upgradePrivilege } from '../services/api'
 
 const UserProfileModal = ({ isOpen, onClose }) => {
   const { user } = useAuth()
@@ -41,6 +41,7 @@ const UserProfileModal = ({ isOpen, onClose }) => {
     setLoading(true)
     
     try {
+      setError('')
       await changePassword(user.id, currentPassword, newPassword)
       setSuccess('Password changed successfully!')
       // Очистка формы
@@ -95,15 +96,58 @@ const UserProfileModal = ({ isOpen, onClose }) => {
             </div>
           </div>
         </div>
+
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
+        
+        {/* Admin Status and Privilege Upgrade Section */}
+        <div className="admin-status-section">
+          <div className="status-header">
+            <h3>Account Status</h3>
+            {user?.is_admin ? (
+              <span className="status-badge admin">Administrator</span>
+            ) : (
+              <span className="status-badge user">User</span>
+            )}
+          </div>
+          <div className="status-display">
+            {user?.is_admin ? (
+              <div className="admin-status">
+                <p>You have administrative privileges</p>
+              </div>
+            ) : (
+              <div className="user-status">
+                <p>You have standard user privileges</p>
+                <button 
+                  className="btn btn-upgrade"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    try {
+                      setError('');
+                      await upgradePrivilege(user.id);
+                      setSuccess('Privilege upgrade request sent successfully!');
+                      setTimeout(() => {
+                        setSuccess('');
+                      }, 3000);
+                    } catch (err) {
+                      const errorMessage = err.response?.data?.detail || err.message || 'Failed to send privilege upgrade request';
+                      setError(errorMessage);
+                    }
+                  }}
+                  type="button"
+                >
+                  Request Admin Privileges
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         
         <form className="change-password-form" onSubmit={handleSubmit}>
           <h3>
             <Key size={18} />
             Change Password
           </h3>
-          
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
           
           <div className="form-group">
             <label htmlFor="currentPassword">Current Password</label>

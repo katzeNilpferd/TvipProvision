@@ -127,4 +127,9 @@ export const rejectTicket = async (ticketId) => {
   return response.data;
 };
 
+export const upgradePrivilege = async (userId) => {
+  const response = await api.post(`/api/users/${userId}/upgrade-privilege`);
+  return response.data;
+};
+
 export default api
