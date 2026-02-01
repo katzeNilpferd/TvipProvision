@@ -92,6 +92,8 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
         return 'Forgot Password'
       case 'privilege_upgrade':
         return 'Privilege Upgrade'
+      case 'account_unlock':
+        return 'Account Unlock'
       default:
         return type
     }

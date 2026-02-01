@@ -55,6 +55,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
       const errorMessage = error.response?.data?.detail || error.message || 'Invalid credentials';
+      
+      // Check if it's a blocked account error
+      if (error.response?.status === 403 && error.response?.data?.detail === 'User account is blocked') {
+        return { success: false, error: errorMessage, isBlocked: true };
+      }
+      
       return { success: false, error: errorMessage };
     }
   };

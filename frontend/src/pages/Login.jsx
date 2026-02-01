@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
+import AccountUnlockModal from '../components/AccountUnlockModal';
 import { forgotPassword, passwordRecovery } from '../services/api';
 import './Login.css';
 
@@ -11,6 +12,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [showAccountUnlockModal, setShowAccountUnlockModal] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -33,9 +35,23 @@ const Login = () => {
       // After successful login, redirect to the intended page
       navigate(from, { replace: true });
     } else {
-      setError(result.error || 'Login failed');
+      if (result.isBlocked) {
+        // Show account unlock modal for blocked accounts
+        setShowAccountUnlockModal(true);
+      } else {
+        setError(result.error || 'Login failed');
+      }
       setLoading(false);
     }
+  };
+
+  const handleUnlockSuccess = () => {
+    setShowAccountUnlockModal(false);
+    setError('Unlock request submitted successfully. Please contact administration if you need further assistance.');
+  };
+
+  const handleUnlockError = (errorMessage) => {
+    setError(errorMessage);
   };
 
   return (
@@ -48,7 +64,7 @@ const Login = () => {
         
         <form className="login-form" onSubmit={handleSubmit}>
           {message && <div className="success-message">{message}</div>}
-          {error && <div className="error-message">{error}</div>}
+          {error && !showAccountUnlockModal && <div className="error-message">{error}</div>}
           
           <div className="form-group">
             <label htmlFor="username">Username</label>
@@ -109,6 +125,14 @@ const Login = () => {
         onClose={() => setShowForgotPasswordModal(false)}
         onForgotPassword={forgotPassword}
         onRecoverPassword={passwordRecovery}
+      />
+      
+      <AccountUnlockModal
+        isOpen={showAccountUnlockModal}
+        onClose={() => setShowAccountUnlockModal(false)}
+        username={username}
+        onUnlockSuccess={handleUnlockSuccess}
+        onUnlockError={handleUnlockError}
       />
     </div>
   );

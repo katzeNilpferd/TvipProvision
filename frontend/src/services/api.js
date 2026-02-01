@@ -132,4 +132,9 @@ export const upgradePrivilege = async (userId) => {
   return response.data;
 };
 
+export const accountUnlock = async (requestData) => {
+  const response = await api.post('/api/users/account-unlock', requestData);
+  return response.data;
+};
+
 export default api
