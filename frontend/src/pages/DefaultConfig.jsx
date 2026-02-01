@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { getDefaultConfig, replaceDefaultConfig } from '../services/api'
 import { CONFIG_FIELDS, TABS } from './configFields'
+import { useAuth } from '../context/AuthContext'
 import './DeviceConfig.css'
 
 // Сопоставление иконок
@@ -15,6 +16,10 @@ const ICON_MAP = {
 }
 
 const DefaultConfig = () => {
+  const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+  
+  const { isAuthenticated, user } = useAuth()
+  const isAdmin = authEnabled ? user?.is_admin === true : true
   const [config, setConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -24,6 +29,8 @@ const DefaultConfig = () => {
   const [activeTab, setActiveTab] = useState('basic')
   const [saving, setSaving] = useState(false)
 
+  const { handleUnauthorized } = useAuth();
+  
   // Загружаем дефолтную конфигурацию
   useEffect(() => {
     loadDefaultConfig()
@@ -44,7 +51,11 @@ const DefaultConfig = () => {
       setOriginalData(simpleData)
     } catch (error) {
       console.error('Failed to load default config:', error)
-      alert('Failed to load default configuration')
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        alert('Failed to load default configuration: ' + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -93,6 +104,13 @@ const DefaultConfig = () => {
       await loadDefaultConfig()
     } catch (error) {
       console.error('Failed to save config:', error)
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else if (error.response?.status === 403) {
+        alert('Admin privileges required to save default configuration')
+      } else {
+        alert('Failed to save default configuration: ' + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setSaving(false)
     }
@@ -166,7 +184,7 @@ const DefaultConfig = () => {
               <button 
                 onClick={handleSave} 
                 className="btn btn-primary" 
-                disabled={saving}
+                disabled={saving || (authEnabled && !isAuthenticated)}
               >
                 <Save size={16} />
                 {saving ? 'Saving...' : 'Save'}
@@ -180,9 +198,30 @@ const DefaultConfig = () => {
               </button>
             </>
           ) : (
-            <button onClick={() => setEditing(true)} className="btn btn-primary">
-              Edit Configuration
-            </button>
+            authEnabled ? (
+              isAuthenticated ? (
+                <button 
+                  onClick={() => setEditing(true)} 
+                  className="btn btn-primary"
+                  disabled={!isAdmin}
+                  title={!isAdmin ? "Admin privileges required to edit default configuration" : ""}
+                >
+                  Edit Configuration
+                </button>
+              ) : (
+                <button className="btn btn-primary" disabled>
+                  Edit Configuration
+                </button>
+              )
+            ) : (
+              // When auth is disabled, allow all operations
+              <button 
+                onClick={() => setEditing(true)} 
+                className="btn btn-primary"
+              >
+                Edit Configuration
+              </button>
+            )
           )}
         </div>
       </div>

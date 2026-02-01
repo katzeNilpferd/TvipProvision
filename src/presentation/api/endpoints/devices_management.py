@@ -7,6 +7,8 @@ from application.use_cases.devices_management.update_device_config import Update
 from application.use_cases.devices_management.replace_device_config import ReplaceDeviceConfigUseCase
 from application.use_cases.devices_management.reset_device_config import ResetDeviceConfigUseCase
 from application.use_cases.devices_management.get_devices_list import GetDevicesListUseCase
+from presentation.api.dependencies.auth import get_current_active_user, get_current_admin_user
+from presentation.api.decorators.auth import optional_auth_endpoint
 from infrastructure.di.injection import (
     get_device_config_use_case,
     update_device_config_use_case,
@@ -20,6 +22,7 @@ router = APIRouter(tags=['Devices-config'])
 
 
 @router.get('/api/devices')
+@optional_auth_endpoint
 async def get_devices_list(
     ip: Optional[str] = None,
     model: Optional[str] = None,
@@ -28,6 +31,7 @@ async def get_devices_list(
     sort_by_last_activity: Optional[SortOrder] = SortOrder.DESC,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
     use_case: GetDevicesListUseCase = Depends(get_devices_list_use_case)
 ):
     return await use_case.execute(
@@ -42,34 +46,42 @@ async def get_devices_list(
 
 
 @router.get('/api/devices/{mac_address}/config')
+@optional_auth_endpoint
 async def get_device_config(
     mac_address: str,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
     use_case: GetDeviceConfigUseCase = Depends(get_device_config_use_case)
 ):  
     return await use_case.execute(mac_address)
 
 
 @router.put('/api/devices/{mac_address}/config/update')
+@optional_auth_endpoint
 async def update_device_config(
     mac_address: str,
     updates: dict[str, Any],
+    current_user: dict[str, Any] = Depends(get_current_admin_user),
     use_case: UpdateDeviceConfigUseCase = Depends(update_device_config_use_case)
 ):
     return await use_case.execute(mac_address, updates)
 
 
 @router.put('/api/devices/{mac_address}/config/replace')
+@optional_auth_endpoint
 async def replace_device_config(
     mac_address: str,
     new_config: dict[str, Any],
+    current_user: dict[str, Any] = Depends(get_current_admin_user),
     use_case: ReplaceDeviceConfigUseCase = Depends(replace_device_config_use_case)
 ):
     return await use_case.execute(mac_address, new_config)
 
 
 @router.post("/api/devices/{mac_address}/config/reset")
+@optional_auth_endpoint
 async def reset_device_config(
     mac_address: str,
+    current_user: dict[str, Any] = Depends(get_current_admin_user),
     use_case: ResetDeviceConfigUseCase = Depends(reset_device_config_use_case)
 ):
     return await use_case.execute(mac_address)

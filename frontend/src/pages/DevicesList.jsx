@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Laptop, RefreshCw, Calendar, Network, Info, MoveUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getDevices } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import './DevicesList.css'
 
 const DEFAULT_LIMIT = 24
@@ -68,6 +69,8 @@ const DevicesList = () => {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const { handleUnauthorized } = useAuth();
+  
   const loadDevices = useCallback(async (overrideParams) => {
     try {
       setRefreshing(true)
@@ -98,11 +101,16 @@ const DevicesList = () => {
       }))
     } catch (error) {
       console.error('Failed to load devices:', error)
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        alert('Failed to load devices: ' + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [searchText])
+  }, [searchText, handleUnauthorized])
 
   const handleSearch = () => {
     loadDevices({ ...buildParams(0), offset: 0 })

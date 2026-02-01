@@ -10,6 +10,41 @@ const api = axios.create({
   withCredentials: false,
 })
 
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsedData = JSON.parse(authData);
+      const token = parsedData.token?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Remove auth data and trigger logout
+      localStorage.removeItem('authData');
+      
+      // Redirect to login page if we're in browser environment
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const getDevices = async (params = {}) => {
   // Filter out null/undefined/empty strings
   const query = Object.fromEntries(
@@ -43,5 +78,63 @@ export const replaceDefaultConfig = async (newConfig) => {
   const response = await api.put('/api/default/config/replace', newConfig)
   return response.data
 }
+
+export const login = async (username, password) => {
+  const response = await api.post('/api/auth/login', { username, password });
+  return response;
+};
+
+export const register = async (username, password) => {
+  const response = await api.post('/api/auth/register', { username, password });
+  return response;
+};
+
+export const validateToken = async (token) => {
+  const response = await api.post('/api/auth/validate', { token });
+  return response.data;
+};
+
+export const changePassword = async (userId, currentPassword, newPassword) => {
+  const response = await api.post(`/api/users/${userId}/change-password`, {
+    current_password: currentPassword,
+    new_password: newPassword
+  });
+  return response.data;
+};
+
+export const forgotPassword = async (requestData) => {
+  const response = await api.post('/api/users/forgot-password', requestData);
+  return response.data;
+};
+
+export const passwordRecovery = async (requestData) => {
+  const response = await api.post('/api/users/password-recovery', requestData);
+  return response.data;
+};
+
+export const getInProgressTickets = async () => {
+  const response = await api.get('/api/tickets/in-progress');
+  return response.data;
+};
+
+export const approveTicket = async (ticketId) => {
+  const response = await api.post(`/api/tickets/${ticketId}/approve`);
+  return response.data;
+};
+
+export const rejectTicket = async (ticketId) => {
+  const response = await api.post(`/api/tickets/${ticketId}/reject`);
+  return response.data;
+};
+
+export const upgradePrivilege = async (userId) => {
+  const response = await api.post(`/api/users/${userId}/upgrade-privilege`);
+  return response.data;
+};
+
+export const accountUnlock = async (requestData) => {
+  const response = await api.post('/api/users/account-unlock', requestData);
+  return response.data;
+};
 
 export default api
