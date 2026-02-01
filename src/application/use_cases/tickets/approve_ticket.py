@@ -63,9 +63,6 @@ class ApproveTicketUseCase:
     async def _check_user_availability(self, user: Optional[User]) -> User:
         if not user:
             raise ValueError("Invalid username or password")
-        
-        if not user.is_active:
-            raise ValueError("User account is inactive")
 
         return user
     
