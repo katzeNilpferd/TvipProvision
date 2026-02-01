@@ -1,6 +1,11 @@
 from typing import Any
 
 from domain.auth.repositories.user_repository import UserRepository
+from domain.auth.exceptions.auth import (
+    UserNotFoundException,
+    InactiveUserException,
+    InvalidPasswordException
+)
 from infrastructure.auth.password_hasher import PasswordHasher
 from infrastructure.auth.jwt_provider import JWTProvider
 
@@ -21,13 +26,13 @@ class LoginUserUseCase:
         user = await self.user_repo.get_by_username(username)
 
         if not user:
-            raise ValueError("Invalid username or password")
+            raise UserNotFoundException("User not found")
         
         if not user.is_active:
-            raise ValueError("User account is inactive")
+            raise InactiveUserException("User account is inactive")
         
         if not self.password_hasher.verify_password(password, user.hashed_password):
-            raise ValueError("Invalid username or password")
+            raise InvalidPasswordException("Invalid password")
 
         token = await self.jwt_provider.create_token(
             user_id=str(user.id),

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 
+from domain.auth.exceptions.auth import *
 from application.use_cases.auth.login_user import LoginUserUseCase
 from application.use_cases.auth.register_user import RegisterUserUseCase
 from application.use_cases.auth.verify_token import VerifyTokenUseCase
@@ -23,7 +24,14 @@ async def login(
     request: LoginRequest,
     use_case: LoginUserUseCase = Depends(get_login_user_use_case)
 ):
-    return await use_case.execute(request.username, request.password)
+    try:
+        return await use_case.execute(request.username, request.password)
+    except UserNotFoundException:
+        raise HTTPException(status_code=404, detail="User not found")
+    except InactiveUserException:
+        raise HTTPException(status_code=403, detail="User account is blocked")
+    except InvalidPasswordException:
+        raise HTTPException(status_code=401, detail="Invalid password")
     
 
 @router.post('/api/auth/register')
@@ -31,7 +39,10 @@ async def register(
     request: RegisterRequest,
     use_case: RegisterUserUseCase = Depends(get_register_user_use_case)
 ):
-    return await use_case.execute(request.username, request.password)
+    try:
+        return await use_case.execute(request.username, request.password)
+    except UserAlreadyExistsException:
+        raise HTTPException(status_code=409, detail="User already exists")
 
 
 @router.post('/api/auth/validate')
