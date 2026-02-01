@@ -9,6 +9,7 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
   const [successMessage, setSuccessMessage] = useState('')
   const [error, setError] = useState('')
   const [revealedSecrets, setRevealedSecrets] = useState(new Set())
+  const [expandedTicketId, setExpandedTicketId] = useState(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -38,6 +39,7 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
     setSuccessMessage('')
     setProcessingTicketId(null)
     setRevealedSecrets(new Set())
+    setExpandedTicketId(null)
     onClose()
   }
 
@@ -147,112 +149,132 @@ const TicketAdminModal = ({ isOpen, onClose }) => {
           ) : (
             <div className="tickets-list">
               {tickets.map((ticket) => (
-                <div key={ticket.id} className="ticket-card" data-ticket-id={ticket.id}>
+                <div 
+                  key={ticket.id} 
+                  className={`ticket-card ${expandedTicketId === ticket.id ? 'expanded' : ''}`} 
+                  data-ticket-id={ticket.id}
+                  onClick={() => setExpandedTicketId(expandedTicketId === ticket.id ? null : ticket.id)}
+                >
                   <div className="ticket-header">
-                    <div className="ticket-type">
-                      <Ticket size={16} />
-                      {getTicketTypeLabel(ticket.ticket_type)}
+                    <div className="ticket-summary">
+                      <div className="ticket-type">
+                        <Ticket size={16} />
+                        {getTicketTypeLabel(ticket.ticket_type)}
+                      </div>
+                      <div className="ticket-user">
+                        <User size={14} />
+                        {ticket.username}
+                      </div>
                     </div>
-                    <div 
-                      className="ticket-status"
-                      style={{ backgroundColor: getStatusColor(ticket.status) }}
-                    >
-                      <Clock size={14} />
-                      {ticket.status.replace('_', ' ')}
-                    </div>
-                  </div>
-                  
-                  <div className="ticket-content">
-                    <div className="ticket-field">
-                      <User size={16} />
-                      <span><strong>Username:</strong> {ticket.username}</span>
-                    </div>
-                    
-                    <div className="ticket-field">
-                      <Calendar size={16} />
-                      <span><strong>Created:</strong> {formatDate(ticket.created_at)}</span>
-                    </div>
-                    
-                    {ticket.secret && (
+                    <div className="ticket-header-right">
                       <div 
-                        className={`ticket-field secret-field ${revealedSecrets.has(ticket.id) ? 'revealed' : 'blurred'}`}
+                        className="ticket-status"
+                        style={{ backgroundColor: getStatusColor(ticket.status) }}
                       >
-                        <Key size={16} />
-                        <span>
-                          <strong>Secret Code:</strong> 
-                          <span className="secret-code">{ticket.secret}</span>
-                        </span>
-                        <small>{ticket.secret_hint}</small>
+                        <Clock size={14} />
+                        {ticket.status.replace('_', ' ')}
                       </div>
-                    )}
-                    
-                    {ticket.description && (
-                      <div className="ticket-field">
-                        <span><strong>Description:</strong> {ticket.description}</span>
+                      <div className="expand-indicator">
+                        {expandedTicketId === ticket.id ? '▼' : '▶'}
                       </div>
-                    )}
+                    </div>
                   </div>
                   
-                  <div className="ticket-actions">
-                    {ticket.ticket_type === 'forgot_password' ? (
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={() => {
-                          // Reveal the secret code
-                          setRevealedSecrets(prev => new Set([...prev, ticket.id]));
-                          
-                          // Scroll to secret field and highlight it
-                          setTimeout(() => {
-                            const secretField = document.querySelector(`[data-ticket-id="${ticket.id}"] .secret-field`);
-                            if (secretField) {
-                              secretField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              secretField.style.animation = 'highlight 2s';
-                            }
-                          }, 100);
-                        }}
-                      >
-                        <Key size={16} />
-                        Show Secret
-                      </button>
-                    ) : (
-                      <>
-                        <button 
-                          className="btn btn-success" 
-                          onClick={() => handleApproveTicket(ticket.id)}
-                          disabled={processingTicketId === ticket.id}
-                        >
-                          {processingTicketId === ticket.id ? (
-                            <>
-                              <div className="spinner-small"></div>
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <Check size={16} />
-                              Approve
-                            </>
-                          )}
-                        </button>
-                        <button 
-                          className="btn btn-danger" 
-                          onClick={() => handleRejectTicket(ticket.id)}
-                          disabled={processingTicketId === ticket.id}
-                        >
-                          {processingTicketId === ticket.id ? (
-                            <>
-                              <div className="spinner-small"></div>
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <XCircle size={16} />
-                              Reject
-                            </>
-                          )}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {expandedTicketId === ticket.id && (
+                    <div className="ticket-details">
+                      <div className="ticket-content">
+                        <div className="ticket-field">
+                          <User size={16} />
+                          <span><strong>Username:</strong> {ticket.username}</span>
+                        </div>
+                        
+                        <div className="ticket-field">
+                          <Calendar size={16} />
+                          <span><strong>Created:</strong> {formatDate(ticket.created_at)}</span>
+                        </div>
+                        
+                        {ticket.secret && (
+                          <div 
+                            className={`ticket-field secret-field ${revealedSecrets.has(ticket.id) ? 'revealed' : 'blurred'}`}
+                          >
+                            <Key size={16} />
+                            <span>
+                              <strong>Secret Code:</strong> 
+                              <span className="secret-code">{ticket.secret}</span>
+                            </span>
+                            <small>{ticket.secret_hint}</small>
+                          </div>
+                        )}
+                        
+                        {ticket.description && (
+                          <div className="ticket-field">
+                            <span><strong>Description:</strong> {ticket.description}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="ticket-actions">
+                        {ticket.ticket_type === 'forgot_password' ? (
+                          <button 
+                            className="btn btn-primary" 
+                            onClick={() => {
+                              // Reveal the secret code
+                              setRevealedSecrets(prev => new Set([...prev, ticket.id]));
+                              
+                              // Scroll to secret field and highlight it
+                              setTimeout(() => {
+                                const secretField = document.querySelector(`[data-ticket-id="${ticket.id}"] .secret-field`);
+                                if (secretField) {
+                                  secretField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  secretField.style.animation = 'highlight 2s';
+                                }
+                              }, 100);
+                            }}
+                          >
+                            <Key size={16} />
+                            Show Secret
+                          </button>
+                        ) : (
+                          <>
+                            <button 
+                              className="btn btn-success" 
+                              onClick={() => handleApproveTicket(ticket.id)}
+                              disabled={processingTicketId === ticket.id}
+                            >
+                              {processingTicketId === ticket.id ? (
+                                <>
+                                  <div className="spinner-small"></div>
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <Check size={16} />
+                                  Approve
+                                </>
+                              )}
+                            </button>
+                            <button 
+                              className="btn btn-danger" 
+                              onClick={() => handleRejectTicket(ticket.id)}
+                              disabled={processingTicketId === ticket.id}
+                            >
+                              {processingTicketId === ticket.id ? (
+                                <>
+                                  <div className="spinner-small"></div>
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle size={16} />
+                                  Reject
+                                </>
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

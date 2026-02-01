@@ -431,11 +431,17 @@ body[data-theme='light'] .theme-toggle {
   border-radius: 8px;
   padding: 16px;
   background: var(--color-surface);
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.ticket-card:hover {
+.ticket-card:hover:not(.expanded) {
   box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
+}
+
+.ticket-card.expanded {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-lg);
 }
 
 .ticket-header {
@@ -445,6 +451,47 @@ body[data-theme='light'] .theme-toggle {
   margin-bottom: 12px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--color-border-light);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.ticket-header:hover {
+  background-color: var(--color-sidebar-hover);
+}
+
+.ticket-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ticket-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.ticket-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expand-indicator {
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.ticket-card.expanded .expand-indicator {
+  transform: rotate(180deg);
+}
+
+.ticket-details {
+  margin-top: 12px;
+  padding-top: 16px;
 }
 
 .ticket-type {
