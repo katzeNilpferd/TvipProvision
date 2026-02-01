@@ -68,6 +68,31 @@ async def upgrade_privilege(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.post('/api/users/{user_id}/account-unlock')
+async def account_unlock(
+    user_id: str,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    use_case: CreateTicketUseCase = Depends(get_create_ticket_use_case)
+):
+    username = current_user.get('username')
+    if not username or current_user.get('id') != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only request account unlock for your own account"
+        )
+    ticket_type = TicketType.ACCOUNT_UNLOCK
+    description = f'User {username} requests account unlock.'
+
+    try:
+        return await use_case.execute(
+            username=username,
+            ticket_type=ticket_type,
+            description=description
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.post('/api/users/forgot-password')
 async def forgot_user_password(
     request: CreateTicketRequest,
