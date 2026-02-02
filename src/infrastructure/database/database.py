@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from infrastructure.database.models import Base
+from infrastructure.database.scripts import migration
 from config import settings
 
 DATABASE_URL = settings.database_url
@@ -30,6 +31,10 @@ AsyncSessionLocal = async_sessionmaker(
 async def init_models() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def init_migrations() -> None:
+    await migration.run_migrations()
 
 
 async def get_db():

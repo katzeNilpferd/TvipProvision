@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from infrastructure.database.database import init_models
 
+from infrastructure.database.database import init_migrations
 from presentation.api.endpoints import (
     provision,
     devices_management,
@@ -40,7 +40,7 @@ if AUTH_ENABLED:
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    await init_models()
+    await init_migrations()
 
 if __name__ == '__main__':
     import uvicorn
