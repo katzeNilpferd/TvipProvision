@@ -6,12 +6,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from infrastructure.database.models import Base
+from config import settings
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    # Example: postgresql+asyncpg://user:password@localhost:5432/tvip_provision
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/tvip_provision",
-)
+DATABASE_URL = settings.database_url
 
 engine = create_async_engine(
     DATABASE_URL,
