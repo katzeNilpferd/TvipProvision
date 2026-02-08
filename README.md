@@ -1,5 +1,7 @@
 # Provisioning Service for TVIP Set-Top Boxes
 
+Readthedocs (RU): https://tvipprovision.readthedocs.io/ru/latest/
+
 **English** | [Русский](README.ru.md)
 
 The service provides automatic issuance of configuration files

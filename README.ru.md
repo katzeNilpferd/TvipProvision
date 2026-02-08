@@ -1,5 +1,7 @@
 # Сервис Provisioning для TVIP приставок
 
+Readthedocs (RU): https://tvipprovision.readthedocs.io/ru/latest/
+
 [English](README.md) | **Русский**
 
 Сервис предоставляет автоматическую выдачу конфигурационных файлов
