@@ -4,7 +4,7 @@ services:
   tvip_provision:
     build: .
     ports:
-      - "7373:80"
+      - "7373:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/tvip_provision
@@ -15,7 +15,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "80:80"
+      - "8383:80"
     profiles:
       - frontend
 
