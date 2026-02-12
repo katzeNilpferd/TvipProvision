@@ -2,6 +2,8 @@
 
 Readthedocs (RU): https://tvipprovision.readthedocs.io/ru/latest/
 
+For all questions: https://t.me/ANNArex0
+
 **English** | [Русский](README.ru.md)
 
 The service provides automatic issuance of configuration files

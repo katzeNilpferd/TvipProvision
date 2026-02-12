@@ -2,6 +2,8 @@
 
 Readthedocs (RU): https://tvipprovision.readthedocs.io/ru/latest/
 
+По всем вопросам: https://t.me/ANNArex0
+
 [English](README.md) | **Русский**
 
 Сервис предоставляет автоматическую выдачу конфигурационных файлов
