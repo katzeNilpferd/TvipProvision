@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { 
   ArrowLeft, Save, RefreshCw,
   Settings, Globe, Tv, Palette,
-  Shield, Monitor, Server 
+  Shield, Monitor, Server,
+  Activity, Database
 } from 'lucide-react'
 import { getDefaultConfig, replaceDefaultConfig } from '../services/api'
 import { CONFIG_FIELDS, TABS } from './configFields'
@@ -12,7 +13,7 @@ import './DeviceConfig.css'
 
 // Сопоставление иконок
 const ICON_MAP = {
-  Settings, Globe, Tv, Palette, Shield, Monitor, Server
+  Settings, Globe, Tv, Palette, Shield, Monitor, Server, Activity, Database
 }
 
 const DefaultConfig = () => {
