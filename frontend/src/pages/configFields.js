@@ -5,18 +5,59 @@ export const CONFIG_FIELDS = {
   updates: [
     { group: 'Update Server', key: 'provision.update_server.@name', label: 'Update Server URL', type: 'text', description: 'since 1.0.28' },
     { group: 'Provisioning Server', key: 'provision.provision_server.@name', label: 'Alternate Provisioning Server', type: 'text', description: 'since 3.1.0' },
-    { group: 'Update Types - Device', key: 'provision.update_types.device.@id', label: 'Device Model ID', type: 'text', description: 'e.g., s400a, s300' },
-    { group: 'Update Types - Device', key: 'provision.update_types.device.@force_type', label: 'Force Update Type', type: 'select', options: [
-        { value: '', label: 'Not forced' },
-        { value: 'release', label: 'Release' },
-        { value: 'beta', label: 'Beta' }
-      ] },
-    { group: 'Update Types - Device', key: 'provision.update_types.device.@force_os', label: 'Force OS Type', type: 'select', options: [
-        { value: '', label: 'Not forced' },
-        { value: 'linux', label: 'Linux' },
-        { value: 'linux-qt', label: 'Linux-Qt' },
-        { value: 'android', label: 'Android' }
-      ] },
+    { 
+      group: 'Update Types', 
+      key: 'provision.update_types', 
+      label: 'Device Update Types',
+      type: 'collection',
+      itemType: 'device',
+      template: {
+        '@id': '',
+        '@force_type': '',
+        '@force_os': '',
+        'type': []
+      },
+      fields: [
+        { key: '@id', label: 'Device Model ID', type: 'text', placeholder: 'e.g., s400a' },
+        { key: '@force_type', label: 'Force Update Type', type: 'select', options: [
+            { value: '', label: 'Not forced' },
+            { value: 'release', label: 'Release' },
+            { value: 'beta', label: 'Beta' }
+          ] 
+        },
+        { key: '@force_os', label: 'Force OS Type', type: 'select', options: [
+            { value: '', label: 'Not forced' },
+            { value: 'linux', label: 'Linux' },
+            { value: 'linux-qt', label: 'Linux-Qt' },
+            { value: 'android', label: 'Android' }
+          ] 
+        },
+        {
+          key: 'type',
+          label: 'OS Types',
+          type: 'subcollection',
+          template: {
+            '@name': '',
+            '@os': '',
+            '@type': 'release'
+          },
+          fields: [
+            { key: '@name', label: 'Display Name', type: 'text', placeholder: 'Android/Beta' },
+            { key: '@os', label: 'OS', type: 'select', options: [
+                { value: 'linux', label: 'Linux' },
+                { value: 'linux-qt', label: 'Linux-Qt' },
+                { value: 'android', label: 'Android' }
+              ] 
+            },
+            { key: '@type', label: 'Update Type', type: 'select', options: [
+                { value: 'release', label: 'Release' },
+                { value: 'beta', label: 'Beta' }
+              ] 
+            }
+          ]
+        }
+      ]
+    },
     { group: 'Update Settings', key: 'provision.updates.update_background.@value', label: 'Background Update', type: 'select', options: [
         { value: 'true', label: 'Enabled' },
         { value: 'false', label: 'Disabled' }

@@ -294,3 +294,216 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+.group-title {
+  margin: 24px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Убираем лишний отступ у первой группы */
+.config-group:first-of-type .group-title {
+  margin-top: 0;
+}
+
+/* Улучшенный стиль для textarea */
+.param-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: 'Courier New', monospace;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 4px;
+  font-size: 14px;
+  flex: 1;
+  max-width: 400px;
+  background: var(--color-input-background);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.param-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-input-focus);
+}
+
+/* Стили для отключённых полей (disabled) */
+.param-input:disabled,
+.param-select:disabled,
+.param-textarea:disabled {
+  background: var(--color-input-disabled);
+  cursor: not-allowed;
+  opacity: 0.7;
+  border-color: var(--color-border-light);
+}
+
+/* Контейнер для поля, помеченного как зависимое (можно затемнить) */
+.param-row.disabled-field {
+  opacity: 0.6;
+}
+
+/* Описание поля (мелкий текст под инпутом) */
+.field-description {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  margin-left: 216px; /* под инпутом при фиксированной ширине лейбла */
+  line-height: 1.4;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 1199px) {
+  .field-description {
+    margin-left: 0;
+  }
+}
+
+/* Группа вложенных полей (например, для TR-069) */
+.nested-group {
+  border-left: 2px solid var(--color-border);
+  padding-left: 16px;
+  margin-left: 16px;
+  margin-bottom: 16px;
+}
+
+.nested-group .param-row:first-child {
+  padding-top: 0;
+}
+
+/* Маленькая кнопка (для будущих сложных структур) */
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+/* Стили для коллекций */
+.collection-manager {
+  margin-bottom: 16px;
+}
+
+.collection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.collection-header h4 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 16px;
+}
+
+.collection-empty {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+
+.collection-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.collection-item {
+  border-left: 2px solid var(--color-border);
+  padding-left: 16px;
+  background: var(--color-surface);
+}
+
+.collection-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-title {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  flex-grow: 1;
+}
+
+.collection-item-fields {
+  padding: 8px 0;
+}
+
+.nested-collection {
+  margin-top: 8px;
+  padding-left: 16px;
+  border-left: 1px dashed var(--color-border-light);
+}
+
+.nested-collection h5 {
+  margin: 8px 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.subcollection {
+  margin: 8px 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--color-border-light);
+}
+
+.subcollection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.subcollection-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.subcollection-item-fields {
+  flex: 1;
+}
+
+/* Дополнительные состояния для значений */
+.param-value.empty {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Группа булевых полей (пример) */
+.boolean-field-group {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--color-surface-alt);
+}
+
+.boolean-field-group .param-row {
+  border-bottom: none;
+  padding: 8px 0;
+}
+
+.boolean-field-group .param-row:last-child {
+  padding-bottom: 0;
+}
