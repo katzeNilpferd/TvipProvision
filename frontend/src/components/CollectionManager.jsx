@@ -54,18 +54,21 @@ const CollectionManager = ({
     const value = field.key.split('.').reduce((obj, key) => obj?.[key], item) || '';
 
     if (field.type === 'select') {
-      return (
+      return editing ? (
         <select
           value={value}
           onChange={(e) => handleItemChange(index, field.key, e.target.value)}
           className="param-input"
-          disabled={!editing}
         >
           <option value="">Not set</option>
           {field.options.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+      ) : (
+        <span className={`param-value ${!value ? 'empty' : ''}`}>
+          {field.options.find(opt => opt.value === value)?.label || value || 'Not set'}
+        </span>
       );
     }
 
@@ -84,22 +87,25 @@ const CollectionManager = ({
       );
     }
 
-    return (
+    return editing ? (
       <input
         type={field.type || 'text'}
         value={value}
         onChange={(e) => handleItemChange(index, field.key, e.target.value)}
         className="param-input"
-        disabled={!editing}
         placeholder={field.placeholder}
       />
+    ) : (
+      <span className={`param-value ${!value ? 'empty' : ''}`}>
+        {value || 'Not set'}
+      </span>
     );
   };
 
   return (
     <div className="collection-manager">
       <div className="collection-header">
-        <h4>{fieldConfig.label}</h4>
+        <label className="param-label">{fieldConfig.label}</label>
         {editing && (
           <button onClick={handleAddItem} className="btn btn-small btn-primary">
             <Plus size={14} /> Add {fieldConfig.itemType}
@@ -191,12 +197,11 @@ const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path
             {fieldConfig.fields.map(field => (
               <div key={field.key} className="param-row">
                 <label className="param-label">{field.label}</label>
-                {field.type === 'select' ? (
+                {field.type === 'select' ? editing ? (
                   <select
                     value={item[field.key] || ''}
                     onChange={(e) => handleItemChange(index, field.key, e.target.value)}
                     className="param-input"
-                    disabled={!editing}
                   >
                     <option value="">Not set</option>
                     {field.options.map(opt => (
@@ -204,14 +209,21 @@ const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path
                     ))}
                   </select>
                 ) : (
+                  <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
+                    {field.options.find(opt => opt.value === item[field.key])?.label || item[field.key] || 'Not set'}
+                  </span>
+                ) : editing ? (
                   <input
                     type={field.type || 'text'}
                     value={item[field.key] || ''}
                     onChange={(e) => handleItemChange(index, field.key, e.target.value)}
                     className="param-input"
-                    disabled={!editing}
                     placeholder={field.placeholder}
                   />
+                ) : (
+                  <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
+                    {item[field.key] || 'Not set'}
+                  </span>
                 )}
               </div>
             ))}
