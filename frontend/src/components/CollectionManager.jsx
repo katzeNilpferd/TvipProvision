@@ -75,7 +75,6 @@ const CollectionManager = ({
     if (field.type === 'subcollection') {
       return (
         <div className="nested-collection">
-          <h5>{field.label}</h5>
           <SubCollectionManager
             fieldConfig={field}
             value={value || []}
@@ -183,7 +182,7 @@ const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path
   return (
     <div className="subcollection">
       <div className="subcollection-header">
-        <span>{fieldConfig.label}</span>
+        <label className="param-label">{fieldConfig.label}</label>
         {editing && (
           <button onClick={handleAddItem} className="btn btn-small btn-primary">
             <Plus size={12} /> Add
