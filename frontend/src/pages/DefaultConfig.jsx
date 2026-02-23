@@ -207,7 +207,7 @@ const DefaultConfig = () => {
                 max={fieldConfig.max}
               />
             )}
-            {description && <span className="field-description">{description}</span>}
+            {/* {description && <span className="field-description">{description}</span>} */}
           </div>
         ) : (
           <span className={`param-value ${!value ? 'empty' : ''}`}>
