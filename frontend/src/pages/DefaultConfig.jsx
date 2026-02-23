@@ -145,9 +145,20 @@ const DefaultConfig = () => {
             fieldConfig={fieldConfig}
             value={collectionValue}
             onChange={(path, value) => {
-              const transformed = lodash.mapKeys(flattenObject(value), (v, k) => `${path}${k}`)
-              console.log(Object.assign(formData, transformed))
-              setFormData(Object.assign(formData, transformed))
+              const newFormData = { ...formData };
+
+              Object.keys(newFormData)
+                .filter(key => key.startsWith(`${path}`))
+                .forEach(key => delete newFormData[key])
+
+              setFormData(
+                Object.assign(
+                  newFormData, lodash.mapKeys(
+                    flattenObject(value),
+                    (v, k) => `${path}${k}`
+                  )
+                )
+              )
             }}
             editing={editing}
             path={key}
