@@ -122,7 +122,7 @@ const CollectionManager = ({
                 <button className="expand-btn" onClick={() => toggleExpand(index)}>
                   {expandedItems[index] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
-                <span className="item-title">
+                <span className="item-title param-value">
                   {item['@mountname'] || item['@name'] || item['@id'] || `${fieldConfig.itemType} ${index + 1}`}
                 </span>
                 {editing && (

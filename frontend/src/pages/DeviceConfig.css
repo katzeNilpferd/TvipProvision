@@ -171,7 +171,6 @@
 
 .param-value {
   color: var(--color-text-secondary);
-  flex: 1;
   max-width: 400px;
   font-size: 14px;
   word-break: break-all;
@@ -347,6 +346,10 @@
   opacity: 0.6;
 }
 
+.dependent-field {
+  margin-left: 16px;
+}
+
 /* Описание поля (мелкий текст под инпутом) */
 .field-description {
   font-size: 12px;
@@ -435,12 +438,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.item-title {
-  font-weight: 500;
-  color: var(--color-text-primary);
-  flex-grow: 1;
 }
 
 .collection-item-fields {
