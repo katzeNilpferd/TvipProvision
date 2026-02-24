@@ -223,21 +223,42 @@ const DefaultConfig = () => {
     // Сначала отфильтровываем поля, которые не должны показываться
     const visibleFields = fields.filter(shouldShowField)
     
-    // Группируем поля по их зависимости
+    // Группируем независимые поля
     const independentFields = visibleFields.filter(f => !f.dependsOn)
-    const dependentFields = visibleFields.filter(f => f.dependsOn)
+    
+    // Функция для рекурсивного рендеринга зависимых полей
+    const renderDependentFields = (parentKey) => {
+      const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentKey)
+      
+      if (dependentFields.length === 0) return null
+      
+      return (
+        <div className="dependent-fields-group">
+          {dependentFields.map(field => {
+            return (
+              <div key={field.key}>
+                {renderField(field, true)}
+                {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+                {renderDependentFields(field.key)}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
 
     return (
       <>
         {/* Независимые поля */}
-        {independentFields.map(field => renderField(field, false))}
-        
-        {/* Зависимые поля (с отступом) */}
-        {dependentFields.length > 0 && (
-          <div className="dependent-fields-group">
-            {dependentFields.map(field => renderField(field, true))}
-          </div>
-        )}
+        {independentFields.map(field => {
+          return (
+            <div key={field.key}>
+              {renderField(field, false)}
+              {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+              {renderDependentFields(field.key)}
+            </div>
+          )
+        })}
       </>
     )
   }
