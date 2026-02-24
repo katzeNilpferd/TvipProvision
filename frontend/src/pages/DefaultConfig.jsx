@@ -30,7 +30,7 @@ const DefaultConfig = () => {
   const [formData, setFormData] = useState({})
   const [originalData, setOriginalData] = useState({})
   const [refreshing, setRefreshing] = useState(false)
-  const [activeTab, setActiveTab] = useState('basic')
+  const [activeTab, setActiveTab] = useState('updates')
   const [saving, setSaving] = useState(false)
 
   const { handleUnauthorized } = useAuth();
