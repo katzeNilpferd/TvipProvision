@@ -105,10 +105,15 @@ const DefaultConfig = () => {
 
   
   const shouldShowField = (fieldConfig) => {
-    const { dependsOn } = fieldConfig
+    const { key, dependsOn } = fieldConfig
     if (!dependsOn) return true
 
     const depValue = formData[dependsOn.key]
+    const currentValue = formData[key]
+    
+    if (currentValue && currentValue.trim() !== '') {
+      return true
+    }
     
     if (dependsOn.notEmpty) {
       return depValue && depValue.trim() !== ''
@@ -122,17 +127,6 @@ const DefaultConfig = () => {
   // Рендерим поле ввода
   const renderField = (fieldConfig, isDependent = false) => {
     const { key, label, type = 'text', options = [], description, dependsOn } = fieldConfig;
-
-    // Проверка зависимости
-    if (dependsOn) {
-      const depValue = formData[dependsOn.key];
-      if (dependsOn.notEmpty && (!depValue || depValue.trim() === '')) {
-        return null;
-      }
-      if (dependsOn.value !== undefined && depValue !== dependsOn.value) {
-        return null;
-      }
-    }
 
     // Для коллекций используем отдельный компонент
     if (type === 'collection') {
