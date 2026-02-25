@@ -1,16 +1,110 @@
 // CollectionManager.jsx
 import React, { useState } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Edit2, ChevronRight } from 'lucide-react';
 
 const CollectionManager = ({ 
   fieldConfig, 
   value = [], 
   onChange, 
   editing,
-  path 
+  path,
+  formData = {}  // Добавляем formData для обработки зависимостей
 }) => {
   const [items, setItems] = useState(value || []);
   const [expandedItems, setExpandedItems] = useState({});
+
+  // Функция проверки зависимости поля
+  const shouldShowField = (field, item, itemIndex) => {
+    const { key, dependsOn } = field;
+    if (!dependsOn) return true;
+
+    // Для коллекций, значения находятся в formData по пути `${path}[${itemIndex}].${dependsOn.key}`
+    // или просто в item если это поле внутри элемента коллекции
+    let depValue;
+    if (dependsOn.key.includes('@') || dependsOn.key.includes('.')) {
+      // Это вложенный путь, ищем в formData
+      depValue = formData[`${path}[${itemIndex}].${dependsOn.key}`];
+      if (depValue === undefined) {
+        // Проверяем также в item
+        depValue = item[dependsOn.key];
+      }
+    } else {
+      // Простое имя поля в item
+      depValue = item[dependsOn.key];
+    }
+    
+    const currentValue = item[key];
+    
+    if (currentValue && currentValue.trim && currentValue.trim() !== '') {
+      return true;
+    }
+    
+    if (dependsOn.notEmpty) {
+      return depValue && depValue.trim && depValue.trim() !== '';
+    } else if (dependsOn.value !== undefined) {
+      return depValue === dependsOn.value;
+    }
+    
+    return true;
+  };
+
+  // Рекурсивный рендеринг полей с учетом зависимостей
+  const renderFieldsWithDependencies = (fields, item, itemIndex, parentPath = '') => {
+    // Сначала отфильтровываем поля, которые не должны показываться
+    const visibleFields = fields.filter(field => shouldShowField(field, item, itemIndex));
+    
+    // Группируем независимые поля
+    const independentFields = visibleFields.filter(f => !f.dependsOn);
+    
+    // Функция для рекурсивного рендеринга зависимых полей
+    const renderDependentFields = (parentFieldKey) => {
+      const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentFieldKey);
+      
+      if (dependentFields.length === 0) return null;
+      
+      return (
+        <div className="dependent-fields-group">
+          {dependentFields.map(field => {
+            const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${itemIndex}].${field.key}`;
+            return (
+              <div key={field.key}>
+                <div className="param-row dependent-field">
+                  <ChevronRight size={16} className="dependency-icon" />
+                  <label className="param-label">{field.label}</label>
+                  <div className="param-control">
+                    {renderField(field, item, itemIndex, parentPath)}
+                  </div>
+                </div>
+                {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+                {renderDependentFields(field.key)}
+              </div>
+            )
+          })}
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {/* Независимые поля */}
+        {independentFields.map(field => {
+          const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${itemIndex}].${field.key}`;
+          return (
+            <div key={field.key}>
+              <div className="param-row dependent-field">
+                <label className="param-label">{field.label}</label>
+                <div className="param-control">
+                  {renderField(field, item, itemIndex, parentPath)}
+                </div>
+              </div>
+              {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+              {renderDependentFields(field.key)}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
     
   const handleAddItem = () => {
     const newItem = JSON.parse(JSON.stringify(fieldConfig.template));
@@ -50,7 +144,7 @@ const CollectionManager = ({
   };
 
   const renderField = (field, item, index, parentPath = '') => {
-    const fullPath = parentPath ? `${parentPath}.${field.key}` : field.key;
+    const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${index}].${field.key}`;
     const value = field.key.split('.').reduce((obj, key) => obj?.[key], item) || '';
 
     if (field.type === 'select') {
@@ -134,17 +228,7 @@ const CollectionManager = ({
               
               {expandedItems[index] && (
                 <div className="collection-item-fields">
-                  {fieldConfig.fields.map(field => (
-                    <div key={field.key} className="param-row dependent-field">
-                      <label className="param-label">{field.label}</label>
-                      <div className="param-control">
-                        {renderField(field, item, index)}
-                        {/* {field.description && (
-                          <span className="field-description">{field.description}</span>
-                        )} */}
-                      </div>
-                    </div>
-                  ))}
+                  {renderFieldsWithDependencies(fieldConfig.fields, item, index, `${path}[${index}]`)}
                 </div>
               )}
             </div>
@@ -156,8 +240,151 @@ const CollectionManager = ({
 };
 
 // Подкомпонент для управления вложенными коллекциями (например, type внутри device)
-const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path }) => {
+const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path, formData = {} }) => {
   const [items, setItems] = useState(value || []);
+
+  // Функция проверки зависимости поля для SubCollectionManager
+  const shouldShowField = (field, item, itemIndex) => {
+    const { key, dependsOn } = field;
+    if (!dependsOn) return true;
+
+    // Для подколлекций, значения находятся в formData по пути `${path}[${itemIndex}].${dependsOn.key}`
+    // или просто в item если это поле внутри элемента подколлекции
+    let depValue;
+    if (dependsOn.key.includes('@') || dependsOn.key.includes('.')) {
+      // Это вложенный путь, ищем в formData
+      depValue = formData[`${path}[${itemIndex}].${dependsOn.key}`];
+      if (depValue === undefined) {
+        // Проверяем также в item
+        depValue = item[dependsOn.key];
+      }
+    } else {
+      // Простое имя поля в item
+      depValue = item[dependsOn.key];
+    }
+    
+    const currentValue = item[key];
+    
+    if (currentValue && currentValue.trim && currentValue.trim() !== '') {
+      return true;
+    }
+    
+    if (dependsOn.notEmpty) {
+      return depValue && depValue.trim && depValue.trim() !== '';
+    } else if (dependsOn.value !== undefined) {
+      return depValue === dependsOn.value;
+    }
+    
+    return true;
+  };
+
+  // Рекурсивный рендеринг полей с учетом зависимостей для SubCollectionManager
+  const renderFieldsWithDependencies = (fields, item, itemIndex, parentPath = '') => {
+    // Сначала отфильтровываем поля, которые не должны показываться
+    const visibleFields = fields.filter(field => shouldShowField(field, item, itemIndex));
+    
+    // Группируем независимые поля
+    const independentFields = visibleFields.filter(f => !f.dependsOn);
+    
+    // Функция для рекурсивного рендеринга зависимых полей
+    const renderDependentFields = (parentFieldKey) => {
+      const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentFieldKey);
+      
+      if (dependentFields.length === 0) return null;
+      
+      return (
+        <div className="dependent-fields-group">
+          {dependentFields.map(field => {
+            const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${itemIndex}].${field.key}`;
+            return (
+              <div key={field.key}>
+                <div className="param-row dependent-field">
+                  <ChevronRight size={16} className="dependency-icon" />
+                  <label className="param-label">{field.label}</label>
+                  {field.type === 'select' ? editing ? (
+                    <select
+                      value={item[field.key] || ''}
+                      onChange={(e) => handleItemChange(itemIndex, field.key, e.target.value)}
+                      className="param-input"
+                    >
+                      <option value="">Not set</option>
+                      {field.options.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
+                      {field.options.find(opt => opt.value === item[field.key])?.label || item[field.key] || 'Not set'}
+                    </span>
+                  ) : editing ? (
+                    <input
+                      type={field.type || 'text'}
+                      value={item[field.key] || ''}
+                      onChange={(e) => handleItemChange(itemIndex, field.key, e.target.value)}
+                      className="param-input"
+                      placeholder={field.placeholder}
+                    />
+                  ) : (
+                    <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
+                      {item[field.key] || 'Not set'}
+                    </span>
+                  )}
+                </div>
+                {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+                {renderDependentFields(field.key)}
+              </div>
+            )
+          })}
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {/* Независимые поля */}
+        {independentFields.map(field => {
+          const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${itemIndex}].${field.key}`;
+          return (
+            <div key={field.key}>
+              <div className="param-row">
+                <label className="param-label">{field.label}</label>
+                {field.type === 'select' ? editing ? (
+                  <select
+                    value={item[field.key] || ''}
+                    onChange={(e) => handleItemChange(itemIndex, field.key, e.target.value)}
+                    className="param-input"
+                  >
+                    <option value="">Not set</option>
+                    {field.options.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
+                    {field.options.find(opt => opt.value === item[field.key])?.label || item[field.key] || 'Not set'}
+                  </span>
+                ) : editing ? (
+                  <input
+                    type={field.type || 'text'}
+                    value={item[field.key] || ''}
+                    onChange={(e) => handleItemChange(itemIndex, field.key, e.target.value)}
+                    className="param-input"
+                    placeholder={field.placeholder}
+                  />
+                ) : (
+                  <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
+                    {item[field.key] || 'Not set'}
+                  </span>
+                )}
+              </div>
+              {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+              {renderDependentFields(field.key)}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
 
   const handleAddItem = () => {
     const newItem = JSON.parse(JSON.stringify(fieldConfig.template));
@@ -193,39 +420,7 @@ const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path
       {items.map((item, index) => (
         <div key={index} className="subcollection-item">
           <div className="subcollection-item-fields">
-            {fieldConfig.fields.map(field => (
-              <div key={field.key} className="param-row">
-                <label className="param-label">{field.label}</label>
-                {field.type === 'select' ? editing ? (
-                  <select
-                    value={item[field.key] || ''}
-                    onChange={(e) => handleItemChange(index, field.key, e.target.value)}
-                    className="param-input"
-                  >
-                    <option value="">Not set</option>
-                    {field.options.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
-                    {field.options.find(opt => opt.value === item[field.key])?.label || item[field.key] || 'Not set'}
-                  </span>
-                ) : editing ? (
-                  <input
-                    type={field.type || 'text'}
-                    value={item[field.key] || ''}
-                    onChange={(e) => handleItemChange(index, field.key, e.target.value)}
-                    className="param-input"
-                    placeholder={field.placeholder}
-                  />
-                ) : (
-                  <span className={`param-value ${!item[field.key] ? 'empty' : ''}`}>
-                    {item[field.key] || 'Not set'}
-                  </span>
-                )}
-              </div>
-            ))}
+            {renderFieldsWithDependencies(fieldConfig.fields, item, index, `${path}[${index}]`)}
           </div>
           {editing && (
             <button onClick={() => handleRemoveItem(index)} className="btn btn-small btn-warning">

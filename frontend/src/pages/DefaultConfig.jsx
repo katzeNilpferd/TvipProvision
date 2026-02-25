@@ -156,6 +156,7 @@ const DefaultConfig = () => {
             }}
             editing={editing}
             path={key}
+            formData={formData}
           />
         </div>
       );
