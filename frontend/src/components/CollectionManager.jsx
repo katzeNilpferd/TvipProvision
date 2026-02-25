@@ -139,9 +139,9 @@ const CollectionManager = ({
                       <label className="param-label">{field.label}</label>
                       <div className="param-control">
                         {renderField(field, item, index)}
-                        {field.description && (
+                        {/* {field.description && (
                           <span className="field-description">{field.description}</span>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   ))}
