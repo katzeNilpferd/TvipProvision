@@ -76,7 +76,7 @@ const DefaultConfig = () => {
     const fullConfig = {}
 
     Object.entries(formData).forEach(([key, value]) => {
-      fullConfig[key] = value ?? ''
+      if (value) fullConfig[key] = value
     })
 
     return fullConfig
