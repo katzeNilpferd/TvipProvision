@@ -1,5 +1,5 @@
 // CollectionManager.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronUp, Edit2, ChevronRight } from 'lucide-react';
 
 const CollectionManager = ({ 
@@ -168,15 +168,15 @@ const CollectionManager = ({
 
     if (field.type === 'subcollection') {
       return (
-        <div className="nested-collection">
-          <SubCollectionManager
-            fieldConfig={field}
-            value={value || []}
-            onChange={(subPath, subValue) => handleItemChange(index, field.key, subValue)}
-            editing={editing}
-            path={`${field.key}`}
-          />
-        </div>
+        <NestedCollectionContainer
+          field={field}
+          value={value}
+          item={item}
+          index={index}
+          handleItemChange={handleItemChange}
+          editing={editing}
+          path={field.key}
+        />
       );
     }
 
@@ -239,19 +239,89 @@ const CollectionManager = ({
   );
 };
 
+// Компонент для вложенной коллекции с автоматическим вычислением высоты
+const NestedCollectionContainer = ({ field, value, item, index, handleItemChange, editing, path }) => {
+  const floatingRef = useRef(null);
+  const [containerHeight, setContainerHeight] = useState('auto');
+
+  // Функция для обновления высоты контейнера
+  const updateContainerHeight = () => {
+    if (floatingRef.current) {
+      const height = floatingRef.current.offsetHeight;
+      // Добавляем небольшой отступ для красоты
+      setContainerHeight(height);
+    }
+  };
+
+  // Обновляем высоту при изменении контента или значения
+  useEffect(() => {
+    updateContainerHeight();
+
+    // Создаем ResizeObserver для отслеживания изменений размера
+    const resizeObserver = new ResizeObserver(updateContainerHeight);
+    if (floatingRef.current) {
+      resizeObserver.observe(floatingRef.current);
+    }
+
+    // Также наблюдаем за изменениями в DOM (добавление/удаление элементов)
+    const mutationObserver = new MutationObserver(updateContainerHeight);
+    if (floatingRef.current) {
+      mutationObserver.observe(floatingRef.current, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+      });
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [value, item, index]); // Пересчитываем при изменении данных
+
+  return (
+    <div 
+      className="nested-collection-container"
+      style={{ height: containerHeight }}
+    >
+      <div ref={floatingRef} className="nested-collection-floating">
+        <SubCollectionManager
+          fieldConfig={field}
+          value={value || []}
+          onChange={(subPath, subValue) => handleItemChange(index, field.key, subValue)}
+          editing={editing}
+          path={`${field.key}`}
+          parentItem={item}
+        />
+      </div>
+    </div>
+  );
+};
+
 // Подкомпонент для управления вложенными коллекциями (например, type внутри device)
-const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path, formData = {} }) => {
+const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path, parentItem = {}, formData = {} }) => {
   const [items, setItems] = useState(value || []);
+
+  // Обновляем items при изменении value
+  useEffect(() => {
+    setItems(value || []);
+  }, [value]);
 
   // Функция проверки зависимости поля для SubCollectionManager
   const shouldShowField = (field, item, itemIndex) => {
     const { key, dependsOn } = field;
     if (!dependsOn) return true;
 
-    // Для подколлекций, значения находятся в formData по пути `${path}[${itemIndex}].${dependsOn.key}`
-    // или просто в item если это поле внутри элемента подколлекции
+    // Для подколлекций, значения могут быть из родительского элемента или из текущего
     let depValue;
-    if (dependsOn.key.includes('@') || dependsOn.key.includes('.')) {
+    
+    // Проверяем, есть ли зависимость от родительского поля
+    if (dependsOn.key.startsWith('parent.')) {
+      // Зависимость от поля родителя
+      const parentKey = dependsOn.key.replace('parent.', '');
+      depValue = parentItem[parentKey];
+    } else if (dependsOn.key.includes('@') || dependsOn.key.includes('.')) {
       // Это вложенный путь, ищем в formData
       depValue = formData[`${path}[${itemIndex}].${dependsOn.key}`];
       if (depValue === undefined) {
@@ -417,18 +487,22 @@ const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path
         )}
       </div>
       
-      {items.map((item, index) => (
-        <div key={index} className="subcollection-item">
-          <div className="subcollection-item-fields">
-            {renderFieldsWithDependencies(fieldConfig.fields, item, index, `${path}[${index}]`)}
+      {items.length === 0 ? (
+        <div className="collection-empty">No items</div>
+      ) : (
+        items.map((item, index) => (
+          <div key={index} className="subcollection-item">
+            <div className="subcollection-item-fields">
+              {renderFieldsWithDependencies(fieldConfig.fields, item, index, `${path}[${index}]`)}
+            </div>
+            {editing && (
+              <button onClick={() => handleRemoveItem(index)} className="btn btn-small btn-warning">
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
-          {editing && (
-            <button onClick={() => handleRemoveItem(index)} className="btn btn-small btn-warning">
-              <Trash2 size={12} />
-            </button>
-          )}
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 };

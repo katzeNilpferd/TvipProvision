@@ -285,6 +285,36 @@
   padding-bottom: 0;
 }
 
+/* Стили для контейнера вложенной коллекции с позиционированием */
+.nested-collection-container {
+  position: relative;
+  display: inline-block;
+  min-width: 320px;
+  border: 1px dashed var(--color-border-light);
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 10px;
+}
+
+/* Стили для вложенного плавающего окна */
+.nested-collection-floating {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  min-width: 299px;
+  min-height: 60px;
+  width: fit-content;
+  max-width: 560px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  padding: 16px 18px 16px 16px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .param-label {
   font-size: 13px;
 }
@@ -448,6 +478,12 @@
   margin-top: 8px;
   padding-left: 16px;
   border-left: 1px dashed var(--color-border-light);
+  /* Делаем вложенные коллекции отдельным прокручиваемым блоком */
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  padding: 12px;
 }
 
 .nested-collection h5 {
@@ -460,6 +496,17 @@
   margin: 8px 0;
   padding-left: 16px;
   border-left: 1px solid var(--color-border-light);
+}
+
+/* Стили для вложенного прокручиваемого блока */
+.nested-collection-scrollable {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 8px;
+  background: var(--color-surface-alt);
 }
 
 .subcollection-header {
