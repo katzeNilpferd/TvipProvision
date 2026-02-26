@@ -8,28 +8,116 @@ const CollectionManager = ({
   onChange, 
   editing,
   path,
-  formData = {}  // Добавляем formData для обработки зависимостей
+  formData = {}
 }) => {
-  const [items, setItems] = useState(value || []);
+  // Функция для проверки, является ли значение коллекцией без индексов
+  const isNonIndexedCollection = (data) => {
+    if (!data || Array.isArray(data)) return false;
+    
+    // Проверяем, есть ли ключи, которые выглядят как атрибуты коллекции
+    const hasCollectionAttrs = Object.keys(data).some(key => 
+      key.startsWith('@') || key === 'protocol' || key === 'type'
+    );
+    
+    return hasCollectionAttrs;
+  };
+
+  // Функция для нормализации данных
+  const normalizeData = (data) => {
+    if (!data) return [];
+    
+    // Случай 1: Уже массив - нормализуем каждый элемент
+    if (Array.isArray(data)) {
+      return data.map(item => normalizeItem(item));
+    }
+    
+    // Случай 2: Объект без индексов (как в примере)
+    if (isNonIndexedCollection(data)) {
+      return [normalizeItem(data)];
+    }
+    
+    return [];
+  };
+
+  // Функция для нормализации отдельного элемента
+  const normalizeItem = (item) => {
+    const normalized = { ...item };
+    const template = fieldConfig.template || {};
+    
+    Object.entries(template).forEach(([key, templateValue]) => {
+      // Если в шаблоне это массив
+      if (Array.isArray(templateValue)) {
+        if (normalized[key]) {
+          if (!Array.isArray(normalized[key])) {
+            // Преобразуем объект в массив с одним элементом
+            normalized[key] = [normalized[key]];
+          }
+          // Если это массив, нормализуем каждый элемент рекурсивно
+          if (normalized[key].length > 0) {
+            normalized[key] = normalized[key].map(subItem => {
+              if (typeof subItem === 'object' && subItem !== null) {
+                // Рекурсивно нормализуем вложенный элемент
+                const subTemplate = Array.isArray(templateValue) && templateValue[0] ? templateValue[0] : {};
+                return normalizeSubItem(subItem, subTemplate);
+              }
+              return subItem;
+            });
+          }
+        } else {
+          normalized[key] = [];
+        }
+      }
+      
+      // Если в шаблоне это объект
+      if (typeof templateValue === 'object' && !Array.isArray(templateValue) && templateValue !== null) {
+        if (normalized[key] && Array.isArray(normalized[key])) {
+          normalized[key] = normalized[key][0] || {};
+        } else if (!normalized[key]) {
+          normalized[key] = {};
+        }
+      }
+    });
+    
+    return normalized;
+  };
+
+  // Функция для нормализации вложенного элемента
+  const normalizeSubItem = (item, template) => {
+    const normalized = { ...item };
+    
+    Object.entries(template).forEach(([key, templateValue]) => {
+      if (Array.isArray(templateValue)) {
+        if (normalized[key] && !Array.isArray(normalized[key])) {
+          normalized[key] = [normalized[key]];
+        } else if (!normalized[key]) {
+          normalized[key] = [];
+        }
+      }
+    });
+    
+    return normalized;
+  };
+
+  const [items, setItems] = useState(() => normalizeData(value));
   const [expandedItems, setExpandedItems] = useState({});
 
-  // Функция проверки зависимости поля
+  // Обновляем items при изменении value
+  useEffect(() => {
+    setItems(normalizeData(value));
+  }, [value]);
+
+  // Остальные функции остаются без изменений...
   const shouldShowField = (field, item, itemIndex) => {
     const { key, dependsOn } = field;
     if (!dependsOn) return true;
 
-    // Для коллекций, значения находятся в formData по пути `${path}[${itemIndex}].${dependsOn.key}`
-    // или просто в item если это поле внутри элемента коллекции
     let depValue;
     if (dependsOn.key.includes('@') || dependsOn.key.includes('.')) {
-      // Это вложенный путь, ищем в formData
       depValue = formData[`${path}[${itemIndex}].${dependsOn.key}`];
       if (depValue === undefined) {
-        // Проверяем также в item
         depValue = item[dependsOn.key];
       }
     } else {
-      // Простое имя поля в item
       depValue = item[dependsOn.key];
     }
     
@@ -48,15 +136,10 @@ const CollectionManager = ({
     return true;
   };
 
-  // Рекурсивный рендеринг полей с учетом зависимостей
   const renderFieldsWithDependencies = (fields, item, itemIndex, parentPath = '') => {
-    // Сначала отфильтровываем поля, которые не должны показываться
     const visibleFields = fields.filter(field => shouldShowField(field, item, itemIndex));
-    
-    // Группируем независимые поля
     const independentFields = visibleFields.filter(f => !f.dependsOn);
     
-    // Функция для рекурсивного рендеринга зависимых полей
     const renderDependentFields = (parentFieldKey) => {
       const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentFieldKey);
       
@@ -65,7 +148,6 @@ const CollectionManager = ({
       return (
         <div className="dependent-fields-group">
           {dependentFields.map(field => {
-            const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${itemIndex}].${field.key}`;
             return (
               <div key={field.key}>
                 <div className="param-row dependent-field">
@@ -75,7 +157,6 @@ const CollectionManager = ({
                     {renderField(field, item, itemIndex, parentPath)}
                   </div>
                 </div>
-                {/* Рекурсивно рендерим поля, зависящие от этого поля */}
                 {renderDependentFields(field.key)}
               </div>
             )
@@ -86,9 +167,7 @@ const CollectionManager = ({
 
     return (
       <>
-        {/* Независимые поля */}
         {independentFields.map(field => {
-          const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${itemIndex}].${field.key}`;
           return (
             <div key={field.key}>
               <div className="param-row dependent-field">
@@ -97,7 +176,6 @@ const CollectionManager = ({
                   {renderField(field, item, itemIndex, parentPath)}
                 </div>
               </div>
-              {/* Рекурсивно рендерим поля, зависящие от этого поля */}
               {renderDependentFields(field.key)}
             </div>
           );
@@ -123,7 +201,6 @@ const CollectionManager = ({
     const newItems = [...items];
     const item = newItems[index];
     
-    // Поддержка вложенных путей (например, 'address.@value')
     const pathParts = fieldPath.split('.');
     let current = item;
     for (let i = 0; i < pathParts.length - 1; i++) {
@@ -144,7 +221,6 @@ const CollectionManager = ({
   };
 
   const renderField = (field, item, index, parentPath = '') => {
-    const fullPath = parentPath ? `${parentPath}.${field.key}` : `${path}[${index}].${field.key}`;
     const value = field.key.split('.').reduce((obj, key) => obj?.[key], item) || '';
 
     if (field.type === 'select') {
@@ -244,6 +320,13 @@ const NestedCollectionContainer = ({ field, value, item, index, handleItemChange
   const floatingRef = useRef(null);
   const [containerHeight, setContainerHeight] = useState('auto');
 
+  // Функция для нормализации вложенных данных
+  const normalizeNestedData = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    return [data]; // Если пришел объект, превращаем в массив с одним элементом
+  };
+
   // Функция для обновления высоты контейнера
   const updateContainerHeight = () => {
     if (floatingRef.current) {
@@ -288,7 +371,7 @@ const NestedCollectionContainer = ({ field, value, item, index, handleItemChange
       <div ref={floatingRef} className="nested-collection-floating">
         <SubCollectionManager
           fieldConfig={field}
-          value={value || []}
+          value={normalizeNestedData(value)}
           onChange={(subPath, subValue) => handleItemChange(index, field.key, subValue)}
           editing={editing}
           path={`${field.key}`}
@@ -301,11 +384,44 @@ const NestedCollectionContainer = ({ field, value, item, index, handleItemChange
 
 // Подкомпонент для управления вложенными коллекциями (например, type внутри device)
 const SubCollectionManager = ({ fieldConfig, value = [], onChange, editing, path, parentItem = {}, formData = {} }) => {
-  const [items, setItems] = useState(value || []);
+  // Функция для нормализации вложенных данных на основе шаблона
+  const normalizeSubData = (data) => {
+    if (!data || !Array.isArray(data)) return [];
+    
+    return data.map(item => {
+      const normalized = { ...item };
+      const template = fieldConfig.template || {};
+      
+      // Проходим по всем ключам шаблона
+      Object.entries(template).forEach(([key, templateValue]) => {
+        // Если в шаблоне это массив, а в данных это объект или примитив
+        if (Array.isArray(templateValue)) {
+          if (normalized[key] && !Array.isArray(normalized[key])) {
+            normalized[key] = [normalized[key]];
+          } else if (!normalized[key]) {
+            normalized[key] = [];
+          }
+        }
+        
+        // Если в шаблоне это объект, а в данных это массив
+        if (typeof templateValue === 'object' && !Array.isArray(templateValue) && templateValue !== null) {
+          if (normalized[key] && Array.isArray(normalized[key])) {
+            normalized[key] = normalized[key][0] || {};
+          } else if (!normalized[key]) {
+            normalized[key] = {};
+          }
+        }
+      });
+      
+      return normalized;
+    });
+  };
+
+  const [items, setItems] = useState(() => normalizeSubData(value));
 
   // Обновляем items при изменении value
   useEffect(() => {
-    setItems(value || []);
+    setItems(normalizeSubData(value));
   }, [value]);
 
   // Функция проверки зависимости поля для SubCollectionManager
