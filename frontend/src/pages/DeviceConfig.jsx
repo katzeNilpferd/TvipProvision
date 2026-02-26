@@ -2,33 +2,37 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
   ArrowLeft, Save, RotateCcw, RefreshCw, 
-  Settings, Globe, Tv, Palette, Shield, Monitor, Server 
+  Settings, Globe, Tv, Palette, 
+  Shield, Monitor, Server, Activity, Database,
+  ChevronRight
 } from 'lucide-react'
+import lodash from 'lodash'
+import dot from 'dot-object'
 import { getDeviceConfig, replaceDeviceConfig, resetDeviceConfig } from '../services/api'
 import { CONFIG_FIELDS, TABS } from './configFields'
 import { useAuth } from '../context/AuthContext'
+import CollectionManager from '../components/CollectionManager'
 import './DeviceConfig.css'
 
 // Сопоставление иконок
 const ICON_MAP = {
-  Settings, Globe, Tv, Palette, Shield, Monitor, Server
+  Settings, Globe, Tv, Palette, Shield, Monitor, Server, Activity, Database
 }
 
 const DeviceConfig = () => {
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
   const { macAddress } = useParams()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, handleUnauthorized } = useAuth()
   const isAdmin = authEnabled ? user?.is_admin === true : true
   const [config, setConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({})
+  const [originalData, setOriginalData] = useState({})
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('basic')
   const [saving, setSaving] = useState(false)
-
-  const { handleUnauthorized } = useAuth();
   
   // Загружаем конфигурацию устройства
   useEffect(() => {
@@ -42,11 +46,12 @@ const DeviceConfig = () => {
       setConfig(data)
       
       // Преобразуем данные в простой формат
-      const simpleData = {}
-      if (data?.config?.parameters?.provision) {
-        flattenObject(data.config.parameters.provision, 'provision', simpleData)
-      }
+      const simpleData = data?.config?.parameters?.provision 
+        ? dot.dot(data?.config?.parameters)
+        : {}
+
       setFormData(simpleData)
+      setOriginalData(simpleData)
     } catch (error) {
       console.error('Failed to load device config:', error)
       if (error.response?.status === 401) {
@@ -60,34 +65,12 @@ const DeviceConfig = () => {
     }
   }
 
-  // Преобразуем вложенные объекты в плоскую структуру
-  const flattenObject = (obj, path = '', result = {}) => {
-    for (const key in obj) {
-      const newPath = path ? `${path}.${key}` : key
-      
-      if (Array.isArray(obj[key])) {
-        // Обрабатываем массивы
-        obj[key].forEach((item, index) => {
-          if (typeof item === 'object' && item !== null) {
-            flattenObject(item, `${newPath}[${index}]`, result)
-          } else {
-            result[`${newPath}[${index}]`] = String(item)
-          }
-        })
-      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-        flattenObject(obj[key], newPath, result)
-      } else {
-        result[newPath] = String(obj[key])
-      }
-    }
-  }
-
-  // Создаем вложенную структуру для API (replace)
+  // Создаем полную структуру для API (replace)
   const prepareDataForSave = () => {
     const fullConfig = {}
 
     Object.entries(formData).forEach(([key, value]) => {
-      fullConfig[key] = value ?? ''
+      if (value) fullConfig[key] = value
     })
 
     return fullConfig
@@ -133,40 +116,157 @@ const DeviceConfig = () => {
     }
   }
 
+  const shouldShowField = (fieldConfig) => {
+    const { key, dependsOn } = fieldConfig
+    if (!dependsOn) return true
+
+    const depValue = formData[dependsOn.key]
+    const currentValue = formData[key]
+    
+    if (currentValue && currentValue.trim() !== '') {
+      return true
+    }
+    
+    if (dependsOn.notEmpty) {
+      return depValue && depValue.trim() !== ''
+    } else if (dependsOn.value !== undefined) {
+      return depValue === dependsOn.value
+    }
+    
+    return true
+  }
+
   // Рендерим поле ввода
-  const renderField = (fieldConfig) => {
-    const { key, label, type = 'text', options = [] } = fieldConfig
-    const value = formData[key] || ''
+  const renderField = (fieldConfig, isDependent = false) => {
+    const { key, label, type = 'text', options = [], description, dependsOn } = fieldConfig;
+
+    // Для коллекций используем отдельный компонент
+    if (type === 'collection') {
+      const collectionValue = lodash.get(config.config.parameters, key)
+
+      return (
+        <div key={key} className={`param-row collection-row ${isDependent ? 'dependent-field' : ''}`}>
+          {isDependent && <ChevronRight size={16} className="dependency-icon" />}
+          <CollectionManager
+            fieldConfig={fieldConfig}
+            value={collectionValue}
+            onChange={(path, value) => {
+              const newFormData = { ...formData };
+
+              Object.keys(newFormData)
+                .filter(key => key.startsWith(`${path}`))
+                .forEach(key => delete newFormData[key])
+
+              setFormData(
+                Object.assign(
+                  newFormData, lodash.mapKeys(
+                    dot.dot(value),
+                    (v, k) => `${path}${k}`
+                  )
+                )
+              )
+            }}
+            editing={editing}
+            path={key}
+            formData={formData}
+          />
+        </div>
+      );
+    }
+
+    // Обычные поля
+    const value = formData[key] || '';
 
     return (
-      <div key={key} className="param-row">
+      <div key={key} className={`param-row ${isDependent ? 'dependent-field' : ''}`}>
+        {isDependent && <ChevronRight size={16} className="dependency-icon" />}
         <label className="param-label">{label}</label>
         {editing ? (
-          type === 'select' ? (
-            <select
-              value={value}
-              onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
-              className="param-select"
-            >
-              <option value="">Not set</option>
-              {options.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type={type}
-              value={value}
-              onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
-              className="param-input"
-            />
-          )
+          <div className="param-control">
+            {type === 'select' ? (
+              <select
+                value={value}
+                onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
+                className="param-select"
+              >
+                <option value="">Not set</option>
+                {options.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : type === 'textarea' ? (
+              <textarea
+                value={value}
+                onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
+                className="param-textarea"
+                rows={4}
+              />
+            ) : (
+              <input
+                type={type}
+                value={value}
+                onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
+                className="param-input"
+                placeholder={fieldConfig.placeholder}
+                min={fieldConfig.min}
+                max={fieldConfig.max}
+              />
+            )}
+            {/* {description && <span className="field-description">{description}</span>} */}
+          </div>
         ) : (
-          <span className="param-value">{value || 'Not set'}</span>
+          <span className={`param-value ${!value ? 'empty' : ''}`}>
+            {value || 'Not set'}
+          </span>
         )}
       </div>
+    );
+  };
+
+  // Рекурсивный рендеринг полей с учетом зависимостей
+  const renderFieldsWithDependencies = (fields) => {
+    // Сначала отфильтровываем поля, которые не должны показываться
+    const visibleFields = fields.filter(shouldShowField)
+    
+    // Группируем независимые поля
+    const independentFields = visibleFields.filter(f => !f.dependsOn)
+    
+    // Функция для рекурсивного рендеринга зависимых полей
+    const renderDependentFields = (parentKey) => {
+      const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentKey)
+      
+      if (dependentFields.length === 0) return null
+      
+      return (
+        <div className="dependent-fields-group">
+          {dependentFields.map(field => {
+            return (
+              <div key={field.key}>
+                {renderField(field, true)}
+                {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+                {renderDependentFields(field.key)}
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+
+    return (
+      <>
+        {/* Независимые поля */}
+        {independentFields.map(field => {
+          return (
+            <div key={field.key}>
+              {renderField(field, false)}
+              {/* Рекурсивно рендерим поля, зависящие от этого поля */}
+              {renderDependentFields(field.key)}
+            </div>
+          )
+        })}
+      </>
     )
   }
 
@@ -174,6 +274,14 @@ const DeviceConfig = () => {
   if (!config) return <div className="error">Device not found</div>
 
   const ActiveTabIcon = ICON_MAP[TABS.find(tab => tab.id === activeTab)?.icon] || Settings
+
+  const fields = CONFIG_FIELDS[activeTab] || []
+  const groupedFields = fields.reduce((acc, field) => {
+    const group = field.group || 'Other'
+    if (!acc[group]) acc[group] = []
+    acc[group].push(field)
+    return acc
+  }, {})
 
   return (
     <div className="page device-config-page">
@@ -208,7 +316,14 @@ const DeviceConfig = () => {
                 <Save size={16} />
                 {saving ? 'Saving...' : 'Save'}
               </button>
-              <button onClick={() => setEditing(false)} className="btn btn-secondary">
+              <button 
+                onClick={() => {
+                  setEditing(false)
+                  setFormData(originalData)
+                }} 
+                className="btn btn-secondary"
+                disabled={saving}
+              >
                 Cancel
               </button>
             </>
@@ -296,16 +411,12 @@ const DeviceConfig = () => {
 
         {/* Содержимое вкладки */}
         <div className="tab-content">
-          <div className="tab-header">
-            <ActiveTabIcon size={20} />
-            <h2>{TABS.find(tab => tab.id === activeTab)?.name} Settings</h2>
-          </div>
-
-          <div className="config-section">
-            <div className="config-group">
-              {CONFIG_FIELDS[activeTab]?.map(field => renderField(field))}
+          {Object.entries(groupedFields).map(([groupName, groupFields]) => (
+            <div key={groupName} className="config-group">
+              <h3 className="group-title">{groupName}</h3>
+              {renderFieldsWithDependencies(groupFields)}
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
