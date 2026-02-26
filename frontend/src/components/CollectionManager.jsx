@@ -1,5 +1,5 @@
 // CollectionManager.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronUp, Edit2, ChevronRight } from 'lucide-react';
 
 const CollectionManager = ({ 
@@ -10,104 +10,43 @@ const CollectionManager = ({
   path,
   formData = {}
 }) => {
-  // Функция для проверки, является ли значение коллекцией без индексов
-  const isNonIndexedCollection = (data) => {
-    if (!data || Array.isArray(data)) return false;
+  // Используем useRef для отслеживания предыдущего значения
+  const prevValueRef = useRef(value);
+
+  // Мемоизируем функцию нормализации
+  const normalizeData = useCallback((data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
     
     // Проверяем, есть ли ключи, которые выглядят как атрибуты коллекции
     const hasCollectionAttrs = Object.keys(data).some(key => 
       key.startsWith('@') || key === 'protocol' || key === 'type'
     );
     
-    return hasCollectionAttrs;
-  };
-
-  // Функция для нормализации данных
-  const normalizeData = (data) => {
-    if (!data) return [];
-    
-    // Случай 1: Уже массив - нормализуем каждый элемент
-    if (Array.isArray(data)) {
-      return data.map(item => normalizeItem(item));
-    }
-    
-    // Случай 2: Объект без индексов (как в примере)
-    if (isNonIndexedCollection(data)) {
-      return [normalizeItem(data)];
+    if (hasCollectionAttrs) {
+      return [data];
     }
     
     return [];
-  };
+  }, []);
 
-  // Функция для нормализации отдельного элемента
-  const normalizeItem = (item) => {
-    const normalized = { ...item };
-    const template = fieldConfig.template || {};
-    
-    Object.entries(template).forEach(([key, templateValue]) => {
-      // Если в шаблоне это массив
-      if (Array.isArray(templateValue)) {
-        if (normalized[key]) {
-          if (!Array.isArray(normalized[key])) {
-            // Преобразуем объект в массив с одним элементом
-            normalized[key] = [normalized[key]];
-          }
-          // Если это массив, нормализуем каждый элемент рекурсивно
-          if (normalized[key].length > 0) {
-            normalized[key] = normalized[key].map(subItem => {
-              if (typeof subItem === 'object' && subItem !== null) {
-                // Рекурсивно нормализуем вложенный элемент
-                const subTemplate = Array.isArray(templateValue) && templateValue[0] ? templateValue[0] : {};
-                return normalizeSubItem(subItem, subTemplate);
-              }
-              return subItem;
-            });
-          }
-        } else {
-          normalized[key] = [];
-        }
-      }
-      
-      // Если в шаблоне это объект
-      if (typeof templateValue === 'object' && !Array.isArray(templateValue) && templateValue !== null) {
-        if (normalized[key] && Array.isArray(normalized[key])) {
-          normalized[key] = normalized[key][0] || {};
-        } else if (!normalized[key]) {
-          normalized[key] = {};
-        }
-      }
-    });
-    
-    return normalized;
-  };
+  // Мемоизируем нормализованное значение
+  const normalizedValue = useMemo(() => normalizeData(value), [value, normalizeData]);
 
-  // Функция для нормализации вложенного элемента
-  const normalizeSubItem = (item, template) => {
-    const normalized = { ...item };
-    
-    Object.entries(template).forEach(([key, templateValue]) => {
-      if (Array.isArray(templateValue)) {
-        if (normalized[key] && !Array.isArray(normalized[key])) {
-          normalized[key] = [normalized[key]];
-        } else if (!normalized[key]) {
-          normalized[key] = [];
-        }
-      }
-    });
-    
-    return normalized;
-  };
-
-  const [items, setItems] = useState(() => normalizeData(value));
+  const [items, setItems] = useState(() => normalizedValue);
   const [expandedItems, setExpandedItems] = useState({});
 
-  // Обновляем items при изменении value
+  // Обновляем items только если значение действительно изменилось
   useEffect(() => {
-    setItems(normalizeData(value));
-  }, [value]);
+    // Сравниваем предыдущее значение с текущим
+    if (JSON.stringify(prevValueRef.current) !== JSON.stringify(normalizedValue)) {
+      setItems(normalizedValue);
+      prevValueRef.current = normalizedValue;
+    }
+  }, [normalizedValue]);
 
-  // Остальные функции остаются без изменений...
-  const shouldShowField = (field, item, itemIndex) => {
+  // Мемоизируем функцию проверки зависимости
+  const shouldShowField = useCallback((field, item, itemIndex) => {
     const { key, dependsOn } = field;
     if (!dependsOn) return true;
 
@@ -134,70 +73,23 @@ const CollectionManager = ({
     }
     
     return true;
-  };
+  }, [formData, path]);
 
-  const renderFieldsWithDependencies = (fields, item, itemIndex, parentPath = '') => {
-    const visibleFields = fields.filter(field => shouldShowField(field, item, itemIndex));
-    const independentFields = visibleFields.filter(f => !f.dependsOn);
-    
-    const renderDependentFields = (parentFieldKey) => {
-      const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentFieldKey);
-      
-      if (dependentFields.length === 0) return null;
-      
-      return (
-        <div className="dependent-fields-group">
-          {dependentFields.map(field => {
-            return (
-              <div key={field.key}>
-                <div className="param-row dependent-field">
-                  <ChevronRight size={16} className="dependency-icon" />
-                  <label className="param-label">{field.label}</label>
-                  <div className="param-control">
-                    {renderField(field, item, itemIndex, parentPath)}
-                  </div>
-                </div>
-                {renderDependentFields(field.key)}
-              </div>
-            )
-          })}
-        </div>
-      );
-    };
-
-    return (
-      <>
-        {independentFields.map(field => {
-          return (
-            <div key={field.key}>
-              <div className="param-row dependent-field">
-                <label className="param-label">{field.label}</label>
-                <div className="param-control">
-                  {renderField(field, item, itemIndex, parentPath)}
-                </div>
-              </div>
-              {renderDependentFields(field.key)}
-            </div>
-          );
-        })}
-      </>
-    );
-  };
-    
-  const handleAddItem = () => {
+  // Мемоизируем функции обработчиков
+  const handleAddItem = useCallback(() => {
     const newItem = JSON.parse(JSON.stringify(fieldConfig.template));
     const newItems = [...items, newItem];
     setItems(newItems);
     onChange(path, newItems);
-  };
+  }, [items, fieldConfig.template, onChange, path]);
 
-  const handleRemoveItem = (index) => {
+  const handleRemoveItem = useCallback((index) => {
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
     onChange(path, newItems);
-  };
+  }, [items, onChange, path]);
 
-  const handleItemChange = (index, fieldPath, fieldValue) => {
+  const handleItemChange = useCallback((index, fieldPath, fieldValue) => {
     const newItems = [...items];
     const item = newItems[index];
     
@@ -211,16 +103,62 @@ const CollectionManager = ({
     
     setItems(newItems);
     onChange(path, newItems);
-  };
+  }, [items, onChange, path]);
 
-  const toggleExpand = (index) => {
+  const toggleExpand = useCallback((index) => {
     setExpandedItems(prev => ({
       ...prev,
       [index]: !prev[index]
     }));
-  };
+  }, []);
 
-  const renderField = (field, item, index, parentPath = '') => {
+  // Мемоизируем функцию рендеринга полей
+  const renderFieldsWithDependencies = useCallback((fields, item, itemIndex, parentPath = '') => {
+    const visibleFields = fields.filter(field => shouldShowField(field, item, itemIndex));
+    const independentFields = visibleFields.filter(f => !f.dependsOn);
+    
+    const renderDependentFields = (parentFieldKey) => {
+      const dependentFields = visibleFields.filter(f => f.dependsOn && f.dependsOn.key === parentFieldKey);
+      
+      if (dependentFields.length === 0) return null;
+      
+      return (
+        <div className="dependent-fields-group">
+          {dependentFields.map(field => (
+            <div key={field.key}>
+              <div className="param-row dependent-field">
+                <ChevronRight size={16} className="dependency-icon" />
+                <label className="param-label">{field.label}</label>
+                <div className="param-control">
+                  {renderField(field, item, itemIndex, parentPath)}
+                </div>
+              </div>
+              {renderDependentFields(field.key)}
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {independentFields.map(field => (
+          <div key={field.key}>
+            <div className="param-row dependent-field">
+              <label className="param-label">{field.label}</label>
+              <div className="param-control">
+                {renderField(field, item, itemIndex, parentPath)}
+              </div>
+            </div>
+            {renderDependentFields(field.key)}
+          </div>
+        ))}
+      </>
+    );
+  }, [shouldShowField]);
+
+  // Мемоизируем функцию рендеринга поля
+  const renderField = useCallback((field, item, index, parentPath = '') => {
     const value = field.key.split('.').reduce((obj, key) => obj?.[key], item) || '';
 
     if (field.type === 'select') {
@@ -269,7 +207,7 @@ const CollectionManager = ({
         {value || 'Not set'}
       </span>
     );
-  };
+  }, [editing, handleItemChange]);
 
   return (
     <div className="collection-manager">
