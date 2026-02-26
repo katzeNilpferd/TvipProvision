@@ -7,7 +7,7 @@ export const CONFIG_FIELDS = {
     { group: 'Provisioning Server', key: 'provision.provision_server.@name', label: 'Alternate Provisioning Server', type: 'text', description: 'since 3.1.0' },
     { 
       group: 'Update Types', 
-      key: 'provision.update_types', 
+      key: 'provision.update_types.device', 
       label: 'Device Update Types',
       type: 'collection',
       itemType: 'device',
@@ -39,7 +39,7 @@ export const CONFIG_FIELDS = {
           template: {
             '@name': '',
             '@os': '',
-            '@type': 'release'
+            '@type': ''
           },
           fields: [
             { key: '@name', label: 'Display Name', type: 'text', placeholder: 'Android/Beta' },
