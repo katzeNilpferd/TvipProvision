@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Основной круг -->
+  <circle cx="64" cy="64" r="60" stroke="#4A90E2" stroke-width="8"/>
+  <!-- Символ XML (скобки) -->
+  <path d="M40 45 L30 64 L40 83" stroke="#4A90E2" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M88 45 L98 64 L88 83" stroke="#4A90E2" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Файл/конфиг -->
+  <rect x="50" y="40" width="28" height="48" stroke="#4A90E2" stroke-width="6" rx="3"/>
+  <line x1="56" y1="55" x2="80" y2="55" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
+  <line x1="56" y1="67" x2="80" y2="67" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
+  <line x1="56" y1="79" x2="80" y2="79" stroke="#4A90E2" stroke-width="4" stroke-linecap="round"/>
+</svg>
