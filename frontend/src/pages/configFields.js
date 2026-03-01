@@ -297,8 +297,69 @@ export const CONFIG_FIELDS = {
         { value: 'true', label: 'Yes' },
         { value: 'false', label: 'No' }
       ], description: 'deprecated' },
-    //TODO: android_apps
-    // { group: 'Android Apps', key: 'provision.android_apps', label: 'Android Apps Configuration', type: 'textarea', description: 'JSON configuration for Android apps, since 5.0.30' }
+    {
+      group: 'Android Apps',
+      key: 'provision.android_apps.app',
+      label: 'Android Applications',
+      type: 'collection',
+      itemType: 'app',
+      description: 'Configure Android app settings (since 5.0.30, Android OS only)',
+      template: {
+        '@name': '',
+        '@title': '',
+        '@package': '',
+        '@hidden': 'false',
+        '@icon': '',
+        '@bgr': ''
+      },
+      fields: [
+        { 
+          key: '@name', 
+          label: 'App Name', 
+          type: 'text', 
+          placeholder: 'MediaCenter',
+          description: 'Unique application identifier'
+        },
+        { 
+          key: '@title', 
+          label: 'Display Title', 
+          type: 'text', 
+          placeholder: 'My Media Center',
+          description: 'Name shown in the menu'
+        },
+        { 
+          key: '@package', 
+          label: 'Package Name', 
+          type: 'text', 
+          placeholder: 'com.droidlogic.mediacenter',
+          description: 'Android package name (required)'
+        },
+        { 
+          key: '@hidden', 
+          label: 'Hidden', 
+          type: 'select', 
+          options: [
+            { value: 'true', label: 'Hidden' },
+            { value: 'false', label: 'Visible' }
+          ],
+          description: 'Hide the application from menu'
+        },
+        { 
+          key: '@icon', 
+          label: 'Icon URL', 
+          type: 'text', 
+          placeholder: 'http://tvip.com/icon.png',
+          description: 'Custom icon image URL'
+        },
+        { 
+          key: '@bgr', 
+          label: 'Background URL', 
+          type: 'text', 
+          placeholder: 'http://tvip.com/background.png',
+          description: 'Custom background image URL'
+        }
+      ]
+    }
   ],
 
   // ==================== 6. TV & MIDDLEWARE ====================
