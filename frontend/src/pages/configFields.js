@@ -154,7 +154,38 @@ export const CONFIG_FIELDS = {
         { value: 'true', label: 'Yes' },
         { value: 'false', label: 'No' }
       ], description: 'since 4.2.16' },
-    // TODO: background_picture, picture
+    { group: 'Appearance', key: 'provision.appearance.background_picture.@value', label: 'Background Picture', type: 'text', placeholder: 'Custom', description: 'since 4.2.16' },
+    { group: 'Appearance', key: 'provision.appearance.background_picture.@force', label: 'Force Background Picture', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.appearance.background_picture.@value', notEmpty: true }
+    },
+    {
+      group: 'Appearance',
+      key: 'provision.appearance.background_picture.picture',
+      label: 'Picture For Background',
+      type: 'collection',
+      itemType: 'picture',
+      template: {
+        '@name': '',
+        '@url': ''
+      },
+      fields: [
+        { 
+          key: '@name', 
+          label: 'Background Name', 
+          type: 'text', 
+          placeholder: 'Custom',
+          description: 'Unique background identifier'
+        },
+        { 
+          key: '@url', 
+          label: 'Background URL', 
+          type: 'text', 
+          description: 'URL 8-bit monochrome PNG image'
+        }
+      ]
+    },
     { group: 'Appearance', key: 'provision.appearance.media_freeze_animation.@value', label: 'Disable Freeze Animation', type: 'select', options: [
         { value: 'true', label: 'Yes (disable)' },
         { value: 'false', label: 'No (keep)' }
