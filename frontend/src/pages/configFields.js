@@ -288,7 +288,6 @@ export const CONFIG_FIELDS = {
         { value: 'true', label: 'Enabled' },
         { value: 'false', label: 'Disabled' }
       ] },
-    //TODO: webapps
     { group: 'Web Apps', key: 'provision.webapps.@reordering', label: 'Allow Web App Reordering', type: 'select', options: [
         { value: 'true', label: 'Yes' },
         { value: 'false', label: 'No' }
@@ -297,6 +296,119 @@ export const CONFIG_FIELDS = {
         { value: 'true', label: 'Yes' },
         { value: 'false', label: 'No' }
       ], description: 'deprecated' },
+    {
+      group: 'Web Apps',
+      key: 'provision.webapps.app',
+      label: 'Web Applications',
+      type: 'collection',
+      itemType: 'app',
+      description: 'Configure web applications (since 4.0.x)',
+      template: {
+        '@name': '',
+        '@title': '',
+        '@hidden': 'false',
+        '@icon': '',
+        '@bgr': '',
+        '@uiwidth': '',
+        '@uiheight': '',
+        '@url': '',
+        '@api': '',
+        '@proxy': '',
+        '@dial_origin': '',
+        '@dial_title': '',
+        '@search_script': ''
+      },
+      fields: [
+        { 
+          key: '@name', 
+          label: 'App Name', 
+          type: 'text', 
+          placeholder: 'my_app',
+          description: 'Unique application identifier (required for custom apps)'
+        },
+        { 
+          key: '@title', 
+          label: 'Display Title', 
+          type: 'text', 
+          placeholder: 'My App',
+          description: 'Name shown in the menu (required for custom apps)'
+        },
+        { 
+          key: '@hidden', 
+          label: 'Hidden', 
+          type: 'select', 
+          options: [
+            { value: 'true', label: 'Hidden' },
+            { value: 'false', label: 'Visible' }
+          ],
+          description: 'Hide system app or custom app (since 5.0.33)'
+        },
+        { 
+          key: '@icon', 
+          label: 'Icon', 
+          type: 'text', 
+          description: 'Icon name (account, youtube, plex, etc.) or URL (since 4.0.11)'
+        },
+        { 
+          key: '@bgr', 
+          label: 'Background Image URL', 
+          type: 'text', 
+          description: 'PNG image 320x180px (since 4.0.11)'
+        },
+        { 
+          key: '@uiwidth', 
+          label: 'UI Width', 
+          type: 'number', 
+          placeholder: '1280',
+          description: 'Page width in pixels (required for custom apps)'
+        },
+        { 
+          key: '@uiheight', 
+          label: 'UI Height', 
+          type: 'number', 
+          placeholder: '720',
+          description: 'Page height in pixels (required for custom apps)'
+        },
+        { 
+          key: '@url', 
+          label: 'App URL', 
+          type: 'text', 
+          description: 'Web page URL (required for custom apps)'
+        },
+        { 
+          key: '@api', 
+          label: 'API Type', 
+          type: 'text', 
+          placeholder: 'tvip/mag/html5/youtube/blink',
+          description: 'STB API type (required for custom apps)'
+        },
+        { 
+          key: '@proxy', 
+          label: 'Proxy Server', 
+          type: 'text', 
+          description: 'HTTP/HTTPS proxy server'
+        },
+        { 
+          key: '@dial_origin', 
+          label: 'DIAL Origin', 
+          type: 'text', 
+          description: 'DIAL protocol origin (since 4.0.19)'
+        },
+        { 
+          key: '@dial_title', 
+          label: 'DIAL Title', 
+          type: 'text', 
+          placeholder: 'My App',
+          description: 'DIAL protocol app name'
+        },
+        { 
+          key: '@search_script', 
+          label: 'Search Script URL', 
+          type: 'text', 
+          description: 'JavaScript for system search integration (since 4.1.4)'
+        }
+      ]
+    },
     {
       group: 'Android Apps',
       key: 'provision.android_apps.app',
