@@ -221,7 +221,6 @@ export const CONFIG_FIELDS = {
         { value: '24', label: '24-hour' },
         { value: '12', label: '12-hour' }
       ], dependsOn: {key: 'provision.time.@ntp', notEmpty: true }, description: 'since 4.2.3' },
-    // TODO: Display force
     { group: 'Display', key: 'provision.display.hd_format.@value', label: 'HDMI Format', type: 'select', options: [
         { value: 'auto', label: 'Auto' },
         { value: '2160p50', label: '2160p50' },
@@ -232,25 +231,50 @@ export const CONFIG_FIELDS = {
         { value: '720p50', label: '720p50' },
         { value: '720p60', label: '720p60' },
         { value: '576i50', label: '576i50' }
-      ] },
+      ]
+    },
+    { group: 'Display', key: 'provision.display.hd_format.@force', label: 'Force HDMI Format', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.display.hd_format.@value', notEmpty: true }
+    },
     { group: 'Display', key: 'provision.display.sd_format.@value', label: 'SD Format', type: 'select', options: [
         { value: 'auto', label: 'Auto' },
         { value: 'pal', label: 'PAL' },
         { value: 'ntsc', label: 'NTSC' }
-      ] },
+      ]
+    },
+    { group: 'Display', key: 'provision.display.sd_format.@force', label: 'Force SD Format', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.display.sd_format.@value', notEmpty: true }
+    },
     { group: 'Display', key: 'provision.display.hdmi_autofr.@value', label: 'Auto Frame Rate', type: 'select', options: [
         { value: 'true', label: 'Enabled' },
         { value: 'false', label: 'Disabled' }
-      ] },
+      ]
+    },
+    { group: 'Display', key: 'provision.display.hdmi_autofr.@force', label: 'Force Auto Frame Rate', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.display.hdmi_autofr.@value', notEmpty: true }
+    },
     { group: 'Display', key: 'provision.display.aspect.@value', label: 'Aspect Ratio', type: 'select', options: [
         { value: 'box', label: 'Box' },
         { value: 'zoom', label: 'Zoom' },
         { value: 'full', label: 'Full' }
-      ] },
+      ]
+    },
+    { group: 'Display', key: 'provision.display.aspect.@force', label: 'Force Aspect Ratio', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.display.aspect.@value', notEmpty: true }
+    },
     { group: 'Display', key: 'provision.display.cec.@value', label: 'HDMI-CEC', type: 'select', options: [
         { value: 'true', label: 'Enabled' },
         { value: 'false', label: 'Disabled' }
-      ] },
+      ]
+    },
     { group: 'Display', key: 'provision.display.cec.@force', label: 'Force CEC', type: 'select', options: [
         { value: 'true', label: 'Yes' },
         { value: 'false', label: 'No' }
@@ -260,7 +284,17 @@ export const CONFIG_FIELDS = {
         { value: 'true', label: 'Enabled' },
         { value: 'false', label: 'Disabled' }
       ], description: 'since 4.0.13' },
+    { group: 'Display', key: 'provision.display.sync_standby.@force', label: 'Force Sync Standby', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.display.sync_standby.@value', notEmpty: true }
+    },
     { group: 'Display', key: 'provision.display.cec_name.@value', label: 'CEC Device Name', type: 'text', maxLength: 14, description: 'since 5.1.26' },
+    { group: 'Display', key: 'provision.display.cec_name.@force', label: 'Force CEC Name', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
+      ], dependsOn: { key: 'provision.display.cec_name.@value', notEmpty: true }
+    },
     { group: 'Power', key: 'provision.auto_standby.@timeout', label: 'Auto Standby Timeout (seconds)', type: 'number', min: 0, max: 2500000, placeholder: '3600', description: 'since 3.8.6, 0=off' },
     { group: 'Power', key: 'provision.auto_standby.@force', label: 'Force Auto Standby', type: 'select', options: [
         { value: 'true', label: 'Yes' },
