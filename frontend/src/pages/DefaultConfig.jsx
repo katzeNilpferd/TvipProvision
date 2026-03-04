@@ -200,6 +200,7 @@ const DefaultConfig = () => {
                 placeholder={fieldConfig.placeholder}
                 min={fieldConfig.min}
                 max={fieldConfig.max}
+                size={10 + (value?.length || 10)}
               />
             )}
             {/* {description && <span className="field-description">{description}</span>} */}
