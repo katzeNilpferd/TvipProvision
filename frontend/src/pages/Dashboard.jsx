@@ -175,7 +175,7 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
         
-        <div className="chart-container">
+        {/* <div className="chart-container">
           <h2>Recent Activity (7 days)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
@@ -190,7 +190,7 @@ const Dashboard = () => {
               <Bar dataKey="count" name="Active Devices" fill="#8884d8" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </div> */}
       </div>
     </div>
   )
