@@ -173,7 +173,8 @@
   color: var(--color-text-secondary);
   max-width: 400px;
   font-size: 14px;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Buttons */
@@ -302,8 +303,8 @@
   top: 10px;
   left: 10px;
   min-width: 299px;
-  min-height: 60px;
-  width: fit-content;
+  max-width: 560px;
+  width: max-content;
   max-width: 560px;
   border: 1px solid var(--color-border-light);
   border-radius: 8px;
@@ -311,7 +312,6 @@
   background: var(--color-surface);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
-  white-space: nowrap;
   overflow: hidden;
 }
 
