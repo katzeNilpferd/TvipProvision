@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   tvip_provision:
-    build: .
+    build: ./backend.services/tvip_provision
     ports:
       - "7373:8000"
     environment:
