@@ -8,6 +8,7 @@ from domain.value_objects.network_interface_statistic import NetworkInterfaceSta
 class NetworkStatistic:
     """Represents network statistics from STB device."""
     
+    device_id: UUID
     timestamp: int
     name: str
     speed: int

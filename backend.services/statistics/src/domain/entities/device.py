@@ -16,7 +16,6 @@ class Device:
     last_activity: Optional[datetime] = None
     ip_address: Optional[IpAddress] = None
     id: UUID = field(default_factory=uuid4)
-    config_id: Optional[UUID] = None
 
     def update_last_activity(self) -> None:
         '''Updates the last activity timestamp to the current UTC time.'''

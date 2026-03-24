@@ -9,6 +9,7 @@ from domain.value_objects.video_statistic import VideoStats
 class MediaStatistic:
     """Represents media playback statistics from STB device."""
     
+    device_id: UUID
     timestamp: int
     url: str
     avg_bitrate: int
