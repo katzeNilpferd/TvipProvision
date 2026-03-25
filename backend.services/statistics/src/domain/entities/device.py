@@ -13,8 +13,8 @@ class Device:
 
     mac_address: MacAddress
     model: Optional[str] = None
-    last_activity: Optional[datetime] = None
     ip_address: Optional[IpAddress] = None
+    last_activity: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
     id: UUID = field(default_factory=uuid4)
 
     def update_last_activity(self) -> None:

@@ -21,7 +21,7 @@ class DeviceRepository(ABC):
         '''Retrieves the count of media statistics associated with a Device entity.'''
 
     @abstractmethod
-    async def update_last_activity(self, mac_address: MacAddress) -> Optional[Device]:
+    async def update_last_activity(self, device: Device) -> Optional[Device]:
         '''Updates the last activity timestamp of a Device entity.'''
 
     @abstractmethod
