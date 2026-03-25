@@ -37,6 +37,15 @@ class DeviceMapper:
             last_activity=entity.last_activity,
             ip_address=entity.ip_address.value if entity.ip_address else None
         )
+    
+    @staticmethod
+    def update_model(model: DeviceModel, device: Device) -> DeviceModel:
+        '''Updates an existing DeviceModel instance with data from a Device entity.'''
+        model.mac_address = device.mac_address.value
+        model.model = device.model
+        model.ip_address = str(device.ip_address) if device.ip_address else None
+        model.last_activity = device.last_activity
+        return model
 
 
 class MediaStatisticMapper:
