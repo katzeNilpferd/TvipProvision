@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Request, Header
+from fastapi import APIRouter, Request, Header, Depends
 from typing import Annotated, Optional
 
 from application.dto import StatisticReportDTO
+from application.use_cases.receive_statistics import ReceiveStatisticsUseCase
+from infrastructure.di.injection import get_receive_statistics_use_case
 
 
 router = APIRouter(prefix='/api', tags=['Statistics'])
@@ -14,16 +16,14 @@ async def receive_statistics(
     mac_address: Annotated[str, Header(alias='Mac-Address')],
     x_real_ip: Annotated[Optional[str], Header(alias='X-Real-IP')] = None,
     tvip_model: Annotated[Optional[str], Header(alias='tvip-model', max_length=100)] = None,
-    # use_case: ProcessStatisticsUseCase = Depends(get_process_statistics_use_case)
+    use_case: ReceiveStatisticsUseCase = Depends(get_receive_statistics_use_case)
 ):
     # Приоритет: X-Real-IP (от nginx) -> request.client.host (прямое подключение)
     ip_address = x_real_ip or (request.client.host if request.client else None)
-
-    "TODO: Реализовать обработку статистики через use case"
-    from pprint import pprint
-    pprint(f"Received statistics from device {mac_address} (model: {tvip_model}) at IP {ip_address}\nReports: {reports}")
-    
-    return {
-        "status": "accepted",
-        "message": "Processing statistics"
-    }
+ 
+    return await use_case.execute(
+        mac_address=mac_address,
+        reports=reports,
+        ip_address=ip_address,
+        model=tvip_model
+    )
