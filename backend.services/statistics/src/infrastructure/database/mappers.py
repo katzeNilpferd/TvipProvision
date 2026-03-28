@@ -55,7 +55,6 @@ class MediaStatisticMapper:
     def to_entity(model: MediaStatisticModel) -> MediaStatistic:
         '''Converts a MediaStatisticModel instance to a MediaStatistic entity.'''
         return MediaStatistic(
-            statistic_id=model.statistic_id,
             device_id=model.device_id,
             timestamp=int(model.timestamp.timestamp()),
             url=model.url,
@@ -81,7 +80,6 @@ class MediaStatisticMapper:
     def to_model(entity: MediaStatistic) -> MediaStatisticModel:
         '''Converts a MediaStatistic entity to a MediaStatisticModel instance.'''
         return MediaStatisticModel(
-            statistic_id=entity.statistic_id,
             device_id=entity.device_id,
             timestamp=datetime.fromtimestamp(entity.timestamp, tz=timezone.utc),
             url=entity.url,
@@ -107,7 +105,6 @@ class NetworkStatisticMapper:
     def to_entity(model: NetworkStatisticModel) -> NetworkStatistic:
         '''Converts a NetworkStatisticModel instance to a NetworkStatistic entity.'''
         return NetworkStatistic(
-            statistic_id=model.statistic_id,
             device_id=model.device_id,
             timestamp=int(model.timestamp.timestamp()),
             name=model.interface_name,
@@ -132,7 +129,6 @@ class NetworkStatisticMapper:
     def to_model(entity: NetworkStatistic) -> NetworkStatisticModel:
         '''Converts a NetworkStatistic entity to a NetworkStatisticModel instance.'''
         return NetworkStatisticModel(
-            statistic_id=entity.statistic_id,
             device_id=entity.device_id,
             timestamp=datetime.fromtimestamp(entity.timestamp, tz=timezone.utc),
             interface_name=entity.name,

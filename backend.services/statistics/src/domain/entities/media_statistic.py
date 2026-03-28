@@ -20,4 +20,3 @@ class MediaStatistic:
     id: str
     video: VideoStats
     audio: AudioStats
-    statistic_id: UUID = field(default_factory=uuid4)

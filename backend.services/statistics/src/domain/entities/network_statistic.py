@@ -17,4 +17,3 @@ class NetworkStatistic:
     netmask: str
     gateway: str
     stat: NetworkInterfaceStats
-    statistic_id: UUID = field(default_factory=uuid4)

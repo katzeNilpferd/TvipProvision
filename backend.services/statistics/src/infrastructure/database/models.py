@@ -4,7 +4,8 @@ from sqlalchemy import (
     Text,
     Integer,
     BigInteger,
-    DateTime
+    DateTime,
+    PrimaryKeyConstraint
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
@@ -41,7 +42,6 @@ class DeviceModel(Base):
 class MediaStatisticModel(Base):
     __tablename__ = "media_statistics"
     
-    statistic_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     device_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -62,6 +62,10 @@ class MediaStatisticModel(Base):
     audio_frames_dropped: Mapped[int] = mapped_column(Integer, default=0)
     audio_frames_failed: Mapped[int] = mapped_column(Integer, default=0)
 
+    __table_args__ = (
+        PrimaryKeyConstraint('device_id', 'timestamp', name='media_statistics_pkey'),
+    )
+
     # Relationship
     device: Mapped["DeviceModel"] = relationship(back_populates="media_statistics")
 
@@ -69,7 +73,6 @@ class MediaStatisticModel(Base):
 class NetworkStatisticModel(Base):
     __tablename__ = "network_statistics"
     
-    statistic_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     device_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     interface_name: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -90,5 +93,9 @@ class NetworkStatisticModel(Base):
     sent_total_packets: Mapped[int] = mapped_column(BigInteger, default=0)
     sent_error_packets: Mapped[int] = mapped_column(BigInteger, default=0)
     
+    __table_args__ = (
+        PrimaryKeyConstraint('device_id', 'timestamp', name='network_statistics_pkey'),
+    )
+
     # Relationship
     device: Mapped["DeviceModel"] = relationship(back_populates="network_statistics")
