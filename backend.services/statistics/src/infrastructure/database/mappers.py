@@ -43,7 +43,7 @@ class DeviceMapper:
         '''Updates an existing DeviceModel instance with data from a Device entity.'''
         model.mac_address = device.mac_address.value
         model.model = device.model
-        model.ip_address = str(device.ip_address) if device.ip_address else None
+        model.ip_address = str(device.ip_address.value) if device.ip_address else None
         model.last_activity = device.last_activity
         return model
 
