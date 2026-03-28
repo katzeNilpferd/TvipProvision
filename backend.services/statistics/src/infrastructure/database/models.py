@@ -5,6 +5,7 @@ from sqlalchemy import (
     Integer,
     BigInteger,
     DateTime,
+    ForeignKey,
     PrimaryKeyConstraint
 )
 from sqlalchemy.ext.declarative import declarative_base
@@ -42,7 +43,7 @@ class DeviceModel(Base):
 class MediaStatisticModel(Base):
     __tablename__ = "media_statistics"
     
-    device_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
+    device_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     avg_bitrate: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -73,7 +74,7 @@ class MediaStatisticModel(Base):
 class NetworkStatisticModel(Base):
     __tablename__ = "network_statistics"
     
-    device_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
+    device_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False, index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     interface_name: Mapped[str] = mapped_column(String(50), nullable=False)
     speed: Mapped[int] = mapped_column(Integer, nullable=False)
