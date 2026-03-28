@@ -16,24 +16,24 @@ from infrastructure.database.models import NetworkStatisticModel
 class PGStatisticRepository(StatisticRepository):
     '''PostgreSQL implementation of the StatisticRepository interface.'''
     
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    def __init__(self, db_session: AsyncSession):
+        self.db_session = db_session
 
     async def save_media(self, statistics: List[MediaStatistic]) -> None:
         if not statistics:
             return
         
         models = [media_mapper.to_model(stat) for stat in statistics]
-        self.session.add_all(models)
-        await self.session.flush()
+        self.db_session.add_all(models)
+        await self.db_session.flush()
     
     async def save_network(self, statistics: List[NetworkStatistic]) -> None:
         if not statistics:
             return
         
         models = [network_mapper.to_model(stat) for stat in statistics]
-        self.session.add_all(models)
-        await self.session.flush()
+        self.db_session.add_all(models)
+        await self.db_session.flush()
 
     async def get_media_by_device(
         self,
@@ -58,7 +58,7 @@ class PGStatisticRepository(StatisticRepository):
         if offset:
             query = query.offset(offset)
         
-        result = await self.session.execute(query)
+        result = await self.db_session.execute(query)
         models = result.scalars().all()
         
         return [media_mapper.to_entity(model) for model in models]
@@ -86,23 +86,23 @@ class PGStatisticRepository(StatisticRepository):
         if offset:
             query = query.offset(offset)
         
-        result = await self.session.execute(query)
+        result = await self.db_session.execute(query)
         models = result.scalars().all()
         
         return [network_mapper.to_entity(model) for model in models]
 
     async def clear_media_for_device(self, device: Device) -> None:
-        await self.session.execute(
+        await self.db_session.execute(
             delete(MediaStatisticModel).where(
                 MediaStatisticModel.device_id == device.id
             )
         )
-        await self.session.flush()
+        await self.db_session.flush()
     
     async def clear_network_for_device(self, device: Device) -> None:
-        await self.session.execute(
+        await self.db_session.execute(
             delete(NetworkStatisticModel).where(
                 NetworkStatisticModel.device_id == device.id
             )
         )
-        await self.session.flush()
+        await self.db_session.flush()
