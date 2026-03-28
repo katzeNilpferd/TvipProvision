@@ -73,7 +73,7 @@ class PGDeviceRepository(DeviceRepository):
         
         await self.db_session.flush()
 
-        return device
+        return _.to_entity(model)
     
     async def delete(self, device: Device) -> None:
         result = await self.db_session.execute(
