@@ -8,9 +8,6 @@ from uuid import UUID
 
 from domain.value_objects.mac_address import MacAddress
 from domain.value_objects.ip_address import IpAddress
-from domain.value_objects.video_statistic import VideoStats
-from domain.value_objects.audio_statistic import AudioStats
-from domain.value_objects.network_interface_statistic import NetworkInterfaceStats
 from domain.entities.device import Device
 from domain.entities.media_statistic import MediaStatistic
 from domain.entities.network_statistic import NetworkStatistic
@@ -87,27 +84,7 @@ class ReceiveStatisticsUseCase:
     ) -> MediaStatistic:
         """Handle media statistics."""
 
-        return MediaStatistic(
-            device_id=device_id,
-            timestamp=report.timestamp,
-            url=report.url,
-            avg_bitrate=report.avg_bitrate,
-            begin=report.begin,
-            end=report.end,
-            discontinuities=report.discontinuties,
-            proto=report.proto or "",
-            id=report.id or "",
-            video=VideoStats(
-                frames_decoded=report.video.frames_decoded,
-                frames_dropped=report.video.frames_dropped,
-                frames_failed=report.video.frames_failed
-            ),
-            audio=AudioStats(
-                frames_decoded=report.audio.frames_decoded,
-                frames_dropped=report.audio.frames_dropped,
-                frames_failed=report.audio.frames_failed
-            )
-        )
+        return report.to_domain(device_id)
         
     
     def _handle_network(
@@ -117,23 +94,4 @@ class ReceiveStatisticsUseCase:
     ) -> NetworkStatistic:
         """Handle network statistics."""
 
-        return NetworkStatistic(
-            device_id=device_id,
-            timestamp=report.timestamp,
-            name=report.name,
-            speed=report.speed,
-            duplex=report.duplex,
-            ip=report.ip,
-            netmask=report.netmask,
-            gateway=report.gateway,
-            stat=NetworkInterfaceStats(
-                received_bytes=report.stat.received_bytes,
-                received_total_packets=report.stat.received_total_packets,
-                received_multicast_packets=report.stat.received_multicast_packets,
-                received_error_packets=report.stat.received_error_packets,
-                received_discard_packets=report.stat.received_discard_packets,
-                sent_bytes=report.stat.sent_bytes,
-                sent_total_packets=report.stat.sent_total_packets,
-                sent_error_packets=report.stat.sent_error_packets
-            )
-        )
+        return report.to_domain(device_id)
