@@ -1,6 +1,7 @@
 from typing import Optional, List
+from uuid import UUID
 from datetime import datetime
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.entities.device import Device
@@ -106,3 +107,53 @@ class PGStatisticRepository(StatisticRepository):
             )
         )
         await self.db_session.flush()
+
+    async def get_latest_media_by_devices(
+        self,
+        device_ids: List[str],
+        start_time: datetime
+    ) -> List[MediaStatistic]:
+        """Get latest media statistics for specific devices."""
+        if not device_ids:
+            return []
+        
+        uuids = [UUID(did) for did in device_ids]
+        
+        query = select(MediaStatisticModel).where(
+            and_(
+                MediaStatisticModel.device_id.in_(uuids),
+                MediaStatisticModel.timestamp >= start_time
+            )
+        ).order_by(
+            MediaStatisticModel.timestamp.asc()
+        )
+        
+        result = await self.db_session.execute(query)
+        all_models = result.scalars().all()
+        
+        return [media_mapper.to_entity(model) for model in all_models]
+    
+    async def get_latest_network_by_devices(
+        self,
+        device_ids: List[str],
+        start_time: datetime
+    ) -> List[NetworkStatistic]:
+        """Get latest network statistics for specific devices."""
+        if not device_ids:
+            return []
+        
+        uuids = [UUID(did) for did in device_ids]
+        
+        query = select(NetworkStatisticModel).where(
+            and_(
+                NetworkStatisticModel.device_id.in_(uuids),
+                NetworkStatisticModel.timestamp >= start_time
+            )
+        ).order_by(
+            NetworkStatisticModel.timestamp.asc()
+        )
+        
+        result = await self.db_session.execute(query)
+        all_models = result.scalars().all()
+        
+        return [network_mapper.to_entity(model) for model in all_models]

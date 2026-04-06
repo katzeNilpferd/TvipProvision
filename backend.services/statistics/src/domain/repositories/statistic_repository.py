@@ -47,3 +47,19 @@ class StatisticRepository(ABC):
     @abstractmethod
     async def clear_network_for_device(self, device: Device) -> None:
         """Clear network statistics for a specific device."""
+
+    @abstractmethod
+    async def get_latest_media_by_devices(
+        self,
+        device_ids: List[str],
+        start_time: datetime
+    ) -> List[MediaStatistic]:
+        """Get latest media statistics for specific devices."""
+
+    @abstractmethod
+    async def get_latest_network_by_devices(
+        self,
+        device_ids: List[str],
+        start_time: datetime
+    ) -> List[NetworkStatistic]:
+        """Get latest network statistics for specific devices."""
