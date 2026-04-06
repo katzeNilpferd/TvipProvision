@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Request, Header, Depends
+from fastapi import (
+    APIRouter, Request, Header, Depends, WebSocket, Query
+)
 from typing import Annotated, Optional
 
 from application.dto import StatisticReportDTO
 from application.use_cases.receive_statistics import ReceiveStatisticsUseCase
+from application.services.websocket_service import WebSocketService
 from infrastructure.di.injection import get_receive_statistics_use_case
 
 
@@ -27,3 +30,22 @@ async def receive_statistics(
         ip_address=ip_address,
         model=tvip_model
     )
+
+
+@router.websocket('/ws/statistics')
+async def websocket_statistics(
+    websocket: WebSocket,
+    device_id: Optional[str] = Query(None)
+):
+    """
+    WebSocket endpoint for real-time statistics updates.
+    
+    Query parameters:
+        - device_id: Optional device ID to subscribe to immediately
+    
+    Client commands:
+        - {"action": "subscribe", "device_id": "..."}
+        - {"action": "unsubscribe", "device_id": "..."}
+        - {"action": "ping"}
+    """
+    await WebSocketService.handle_connection(websocket, device_id)
