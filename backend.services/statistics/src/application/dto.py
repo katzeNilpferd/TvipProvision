@@ -170,3 +170,14 @@ class NetworkStatisticDTO(BaseModel):
 
 
 StatisticReportDTO = Union[MediaStatisticDTO, NetworkStatisticDTO]
+
+
+class WebSocketStatsMessage(BaseModel):
+    """Message format for WebSocket statistics updates."""
+    
+    type: str  # 'media', 'network', 'error', 'connection'
+    device_id: Optional[str] = None
+    mac_address: Optional[str] = None
+    timestamp: int
+    data: StatisticReportDTO
+    message: Optional[str] = None  # For error/connection messages
