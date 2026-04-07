@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.sql import text
 
 from infrastructure.database.models import Base
+from infrastructure.database.utils import ensure_db
 from config import settings
 
 DATABASE_URL = settings.DATABASE_URL
@@ -42,6 +43,8 @@ async def get_session():
 #TODO:  A temporary solution instead of migrations. Need to implement proper migration strategy.
 async def init_timescale_db():
     """Initialize TimescaleDB extension and configure hypertables."""
+    await ensure_db()  # Ensure database exists before running migrations
+
     async with engine.begin() as conn:
         # Create TimescaleDB extension
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))
@@ -66,13 +69,15 @@ async def init_timescale_db():
         """))
         
         # Enable compression for media_statistics
-        await conn.execute(text(f"""
+        await conn.execute(text("""
             ALTER TABLE media_statistics SET (
                 timescaledb.compress,
                 timescaledb.compress_segmentby = 'device_id',
                 timescaledb.compress_orderby = 'timestamp DESC'
             );
-            
+        """))
+
+        await conn.execute(text(f"""
             SELECT add_compression_policy('media_statistics', 
                 INTERVAL '{settings.COMPRESSION_DAYS} days',
                 if_not_exists => TRUE
@@ -80,14 +85,16 @@ async def init_timescale_db():
         """))
         
         # Enable compression for network_statistics
-        await conn.execute(text(f"""
+        await conn.execute(text("""
             ALTER TABLE network_statistics SET (
                 timescaledb.compress,
                 timescaledb.compress_segmentby = 'device_id',
                 timescaledb.compress_orderby = 'timestamp DESC'
             );
-            
-            SELECT add_compression_policy('network_statistics',
+        """))
+
+        await conn.execute(text(f"""
+            SELECT add_compression_policy('network_statistics', 
                 INTERVAL '{settings.COMPRESSION_DAYS} days',
                 if_not_exists => TRUE
             );
@@ -99,9 +106,11 @@ async def init_timescale_db():
                 INTERVAL '{settings.RETENTION_DAYS} days',
                 if_not_exists => TRUE
             );
-            
+        """))
+
+        await conn.execute(text(f"""
             SELECT add_retention_policy('network_statistics',
                 INTERVAL '{settings.RETENTION_DAYS} days',
                 if_not_exists => TRUE
-            );
+            ); 
         """))
