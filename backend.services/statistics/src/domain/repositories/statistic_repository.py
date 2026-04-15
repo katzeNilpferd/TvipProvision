@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from datetime import datetime
 
+from domain.value_objects.sort_time import SortTime
 from domain.entities.device import Device
 from domain.entities.media_statistic import MediaStatistic
 from domain.entities.network_statistic import NetworkStatistic
@@ -20,10 +21,11 @@ class StatisticRepository(ABC):
 
     @abstractmethod
     async def get_media_by_device(
-        self, 
+        self,
         device: Device,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        sort_by_timestamp: Optional[SortTime] = SortTime.DESC,
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> List[MediaStatistic]:
@@ -35,6 +37,7 @@ class StatisticRepository(ABC):
         device: Device,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        sort_by_timestamp: Optional[SortTime] = SortTime.DESC,
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> List[NetworkStatistic]:

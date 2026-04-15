@@ -1,9 +1,10 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from domain.value_objects.sort_time import SortTime
 from domain.entities.device import Device
 from domain.entities.media_statistic import MediaStatistic
 from domain.entities.network_statistic import NetworkStatistic
@@ -41,23 +42,28 @@ class PGStatisticRepository(StatisticRepository):
         device: Device,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        sort_by_timestamp: Optional[SortTime] = SortTime.DESC,
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> List[MediaStatistic]:
-        query = select(MediaStatisticModel).where(
-            MediaStatisticModel.device_id == device.id
-        )
+        conditions: List[Any]= []
+
+        if device:
+            conditions.append(MediaStatisticModel.device_id == device.id) 
         if start_time:
-            query = query.where(MediaStatisticModel.timestamp >= start_time)
+            conditions.append(MediaStatisticModel.timestamp >= start_time)
         if end_time:
-            query = query.where(MediaStatisticModel.timestamp <= end_time)
+            conditions.append(MediaStatisticModel.timestamp <= end_time)
         
-        query = query.order_by(MediaStatisticModel.timestamp.desc())
+        query = select(MediaStatisticModel).where(*conditions)
         
-        if limit:
-            query = query.limit(limit)
-        if offset:
-            query = query.offset(offset)
+        if sort_by_timestamp == SortTime.ASC:
+            query = query.order_by(MediaStatisticModel.timestamp.asc())
+        elif sort_by_timestamp == SortTime.DESC:
+            query = query.order_by(MediaStatisticModel.timestamp.desc())
+
+        query = query.limit(limit) if limit else query
+        query = query.offset(offset) if offset else query
         
         result = await self.db_session.execute(query)
         models = result.scalars().all()
@@ -69,23 +75,28 @@ class PGStatisticRepository(StatisticRepository):
         device: Device,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        sort_by_timestamp: Optional[SortTime] = SortTime.DESC,
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> List[NetworkStatistic]:
-        query = select(NetworkStatisticModel).where(
-            NetworkStatisticModel.device_id == device.id
-        )
+        conditions: List[Any]= []
+
+        if device:
+            conditions.append(NetworkStatisticModel.device_id == device.id) 
         if start_time:
-            query = query.where(NetworkStatisticModel.timestamp >= start_time)
+            conditions.append(NetworkStatisticModel.timestamp >= start_time)
         if end_time:
-            query = query.where(NetworkStatisticModel.timestamp <= end_time)
+            conditions.append(NetworkStatisticModel.timestamp <= end_time)
         
-        query = query.order_by(NetworkStatisticModel.timestamp.desc())
+        query = select(NetworkStatisticModel).where(*conditions)
         
-        if limit:
-            query = query.limit(limit)
-        if offset:
-            query = query.offset(offset)
+        if sort_by_timestamp == SortTime.ASC:
+            query = query.order_by(NetworkStatisticModel.timestamp.asc())
+        elif sort_by_timestamp == SortTime.DESC:
+            query = query.order_by(NetworkStatisticModel.timestamp.desc())
+
+        query = query.limit(limit) if limit else query
+        query = query.offset(offset) if offset else query
         
         result = await self.db_session.execute(query)
         models = result.scalars().all()
