@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from domain.repositories.device_repository import DeviceRepository
 from domain.repositories.statistic_repository import StatisticRepository
 from application.use_cases.receive_statistics import ReceiveStatisticsUseCase
+from application.use_cases.get_network_statistics import GetNetworkStatisticsUseCase
 from application.services.broadcast_service import StatisticsBroadcastService
 from infrastructure.database.database import get_session
 from infrastructure.repositories.sql_device_repository import PGDeviceRepository
@@ -34,6 +35,16 @@ def get_receive_statistics_use_case(
     statistic_repo: StatisticRepository = Depends(get_statistic_repository)
 ) -> ReceiveStatisticsUseCase:
     return ReceiveStatisticsUseCase(
+        device_repository=device_repo,
+        statistic_repository=statistic_repo
+    )
+
+
+def get_network_statistics_use_case(
+    device_repo: DeviceRepository = Depends(get_device_repository),
+    statistic_repo: StatisticRepository = Depends(get_statistic_repository)
+) -> GetNetworkStatisticsUseCase:
+    return GetNetworkStatisticsUseCase(
         device_repository=device_repo,
         statistic_repository=statistic_repo
     )
