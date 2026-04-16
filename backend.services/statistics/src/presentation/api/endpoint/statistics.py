@@ -8,10 +8,12 @@ from domain.value_objects.sort_time import SortTime
 from application.dto import StatisticReportDTO
 from application.use_cases.receive_statistics import ReceiveStatisticsUseCase
 from application.use_cases.get_network_statistics import GetNetworkStatisticsUseCase
+from application.use_cases.get_media_statistics import GetMediaStatisticsUseCase
 from application.services.websocket_service import WebSocketService
 from infrastructure.di.injection import (
     get_receive_statistics_use_case,
-    get_network_statistics_use_case
+    get_network_statistics_use_case,
+    get_media_statistics_use_case
 )
 
 
@@ -47,6 +49,26 @@ async def get_network_statistics(
     limit: Optional[int] = None,
     offset: Optional[int] = None,
     use_case: GetNetworkStatisticsUseCase = Depends(get_network_statistics_use_case)
+):
+    return await use_case.execute(
+        mac_address=mac_address,
+        start_time=start_time,
+        end_time=end_time,
+        sort_by_timestamp=sort_by_timestamp,
+        limit=limit,
+        offset=offset
+    )
+
+
+@router.get('/statistics/media')
+async def get_media_statistics(
+    mac_address: str,
+    start_time: datetime,
+    end_time: Optional[datetime] = None,
+    sort_by_timestamp: Optional[SortTime] = SortTime.DESC,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+    use_case: GetMediaStatisticsUseCase = Depends(get_media_statistics_use_case)
 ):
     return await use_case.execute(
         mac_address=mac_address,
