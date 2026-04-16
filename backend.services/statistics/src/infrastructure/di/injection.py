@@ -1,4 +1,5 @@
-from fastapi import Depends
+from fastapi import FastAPI, Depends
+from fastapi_depends_anywhere import with_fastapi_depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.repositories.device_repository import DeviceRepository
@@ -20,15 +21,18 @@ def get_statistic_repository(db: AsyncSession = Depends(get_session)) -> Statist
     return PGStatisticRepository(db_session=db)
 
 
-def get_broadcast_service(
-    device_repo: DeviceRepository = Depends(get_device_repository),
-    statistic_repo: StatisticRepository = Depends(get_statistic_repository)
-) -> StatisticsBroadcastService:
-    return StatisticsBroadcastService(
-        device_repository=device_repo,
-        statistic_repository=statistic_repo,
-        broadcast_interval=5
-    )
+def get_broadcast_service_builder(app: FastAPI):
+    @with_fastapi_depends(app=app)
+    def _builder(
+        device_repo: DeviceRepository = Depends(get_device_repository),
+        statistic_repo: StatisticRepository = Depends(get_statistic_repository),
+    ) -> StatisticsBroadcastService:
+        return StatisticsBroadcastService(
+            device_repository=device_repo,
+            statistic_repository=statistic_repo,
+            broadcast_interval=5
+        )
+    return _builder
 
 
 def get_receive_statistics_use_case(

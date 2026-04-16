@@ -7,7 +7,7 @@ from infrastructure.database.database import (
     engine,
     init_timescale_db
 )
-from infrastructure.di.injection import get_broadcast_service
+from infrastructure.di.injection import get_broadcast_service_builder
 from presentation.api.endpoint import statistics
 from config import settings
 
@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     await init_timescale_db()
     
     # Start background broadcast service
-    broadcast_service = get_broadcast_service()
+    broadcast_service = await get_broadcast_service_builder(app)()
     broadcast_task = asyncio.create_task(broadcast_service.start())
     
     yield

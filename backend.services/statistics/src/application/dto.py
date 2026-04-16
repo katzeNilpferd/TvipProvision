@@ -179,5 +179,5 @@ class WebSocketStatsMessage(BaseModel):
     device_id: Optional[str] = None
     mac_address: Optional[str] = None
     timestamp: int
-    data: StatisticReportDTO
+    data: Union[MediaStatisticDTO, NetworkStatisticDTO]
     message: Optional[str] = None  # For error/connection messages
