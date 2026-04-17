@@ -1,9 +1,18 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BACKEND_URL || 'http://127.0.0.1:7373'
+const API_STATS_URL = import.meta.env.VITE_API_STATS_URL || 'http://127.0.0.1:5757'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: false,
+})
+
+const apiStats = axios.create({
+  baseURL: API_STATS_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -134,6 +143,11 @@ export const upgradePrivilege = async (userId) => {
 
 export const accountUnlock = async (requestData) => {
   const response = await api.post('/api/users/account-unlock', requestData);
+  return response.data;
+};
+
+export const getNetworkStatistics = async (params) => {
+  const response = await apiStats.get('/api/statistics/network', { params });
   return response.data;
 };
 

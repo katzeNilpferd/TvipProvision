@@ -4,7 +4,7 @@ import {
   ArrowLeft, Save, RotateCcw, RefreshCw, 
   Settings, Globe, Tv, Palette, 
   Shield, Monitor, Server, Activity, Database,
-  ChevronRight
+  ChevronRight, BarChart3
 } from 'lucide-react'
 import lodash from 'lodash'
 import dot from 'dot-object'
@@ -12,6 +12,7 @@ import { getDeviceConfig, replaceDeviceConfig, resetDeviceConfig } from '../serv
 import { CONFIG_FIELDS, TABS } from './configFields'
 import { useAuth } from '../context/AuthContext'
 import CollectionManager from '../components/CollectionManager'
+import NetworkStatisticsModal from '../components/NetworkStatisticsModal'
 import './DeviceConfig.css'
 
 // Сопоставление иконок
@@ -33,6 +34,7 @@ const DeviceConfig = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('updates')
   const [saving, setSaving] = useState(false)
+  const [showStatistics, setShowStatistics] = useState(false)
   
   // Загружаем конфигурацию устройства
   useEffect(() => {
@@ -302,6 +304,15 @@ const DeviceConfig = () => {
         </div>
         
         <div className="actions">
+          <button 
+            onClick={() => setShowStatistics(true)} 
+            className="btn btn-secondary"
+            title="View Network Statistics"
+          >
+            <BarChart3 size={16} />
+            Statistics
+          </button>
+          
           <button onClick={loadDeviceConfig} className="btn btn-secondary" disabled={refreshing}>
             <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
             Refresh
@@ -420,6 +431,13 @@ const DeviceConfig = () => {
           ))}
         </div>
       </div>
+
+      {/* Network Statistics Modal */}
+      <NetworkStatisticsModal 
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        macAddress={config?.device?.mac_address}
+      />
     </div>
   )
 }
