@@ -151,4 +151,9 @@ export const getNetworkStatistics = async (params) => {
   return response.data;
 };
 
+export const getMediaStatistics = async (params) => {
+  const response = await apiStats.get('/api/statistics/media', { params });
+  return response.data;
+};
+
 export default api

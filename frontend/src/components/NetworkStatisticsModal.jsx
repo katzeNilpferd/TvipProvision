@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { X, TrendingUp, TrendingDown, Activity, AlertTriangle, ZoomOut, Wifi, WifiOff } from 'lucide-react';
+import { 
+  X, TrendingUp, TrendingDown, Activity, AlertTriangle, 
+  ZoomOut, Wifi, WifiOff, Radio, Film, Volume2, Video 
+} from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -9,25 +12,35 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine
+  ReferenceLine,
+  LineChart,
+  Line,
+  ComposedChart,
+  Area
 } from 'recharts';
-import { getNetworkStatistics } from '../services/api';
+import { getNetworkStatistics, getMediaStatistics } from '../services/api';
 import statisticsWebSocket from '../services/websocket';
 import './NetworkStatisticsModal.css';
 
 // Константы для оптимизации
 const MAX_DATA_POINTS = {
-  '1h': 120,  // 30 секунд интервал
-  '6h': 360,  // 1 минута интервал
-  '24h': 288, // 5 минут интервал
-  '3d': 288,  // 15 минут интервал
-  '7d': 336   // 30 минут интервал
+  '1h': 120,
+  '6h': 360,
+  '24h': 288,
+  '3d': 288,
+  '7d': 336
 };
 
 // Диапазоны, для которых доступен real-time
 const REALTIME_ENABLED_RANGES = ['1h', '6h', '24h'];
 
-// Алгоритм LTTB для сохранения визуальных особенностей при децимации
+// Типы статистики
+const STATISTICS_TYPES = {
+  NETWORK: 'network',
+  MEDIA: 'media'
+};
+
+// Алгоритм LTTB для децимации
 const lttb = (data, threshold) => {
   const dataLength = data.length;
   if (threshold >= dataLength || threshold === 0) {
@@ -55,7 +68,8 @@ const lttb = (data, threshold) => {
     
     for (let j = avgRangeStart; j < avgRangeEnd; j++) {
       avgX += data[j].timestamp;
-      avgY += data[j].receivedRate + data[j].sentRate;
+      // Для медиа-статистики используем avg_bitrate, для сетевой - сумму rates
+      avgY += data[j].avg_bitrate || (data[j].receivedRate + data[j].sentRate) || 0;
     }
     avgX /= avgRangeLength;
     avgY /= avgRangeLength;
@@ -64,13 +78,15 @@ const lttb = (data, threshold) => {
     const rangeTo = Math.floor((i + 1) * bucketSize) + 1;
     
     const pointA = data[a];
+    const pointAValue = pointA.avg_bitrate || (pointA.receivedRate + pointA.sentRate) || 0;
     
     maxAreaPoint.area = -1;
     
     for (let j = rangeOffs; j < rangeTo; j++) {
+      const dataValue = data[j].avg_bitrate || (data[j].receivedRate + data[j].sentRate) || 0;
       const area = Math.abs(
-        (pointA.timestamp - avgX) * (data[j].receivedRate + data[j].sentRate - pointA.receivedRate - pointA.sentRate) -
-        (pointA.timestamp - data[j].timestamp) * (avgY - pointA.receivedRate - pointA.sentRate)
+        (pointA.timestamp - avgX) * (dataValue - pointAValue) -
+        (pointA.timestamp - data[j].timestamp) * (avgY - pointAValue)
       ) * 0.5;
       
       if (area > maxAreaPoint.area) {
@@ -89,12 +105,13 @@ const lttb = (data, threshold) => {
 };
 
 const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
-  // Все useState хуки в начале
+  // Состояния
   const [statistics, setStatistics] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('1h');
+  const [statisticsType, setStatisticsType] = useState(STATISTICS_TYPES.NETWORK);
   const [rawChartData, setRawChartData] = useState([]);
   const [zoomDomain, setZoomDomain] = useState(null);
   const [activeZoomChart, setActiveZoomChart] = useState(null);
@@ -102,130 +119,160 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   const [selectionStart, setSelectionStart] = useState(null);
   const [selectionEnd, setSelectionEnd] = useState(null);
   const [chartDimensions, setChartDimensions] = useState({
-    traffic: null,
-    packets: null,
-    errors: null
+    chart1: null,
+    chart2: null,
+    chart3: null
   });
   
-  // Состояния для WebSocket
+  // WebSocket состояния
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [pendingWsData, setPendingWsData] = useState({ network: [], media: [] });
 
-  // Все useRef хуки
+  // Refs
   const chartRefs = {
-    traffic: useRef(null),
-    packets: useRef(null),
-    errors: useRef(null)
+    chart1: useRef(null),
+    chart2: useRef(null),
+    chart3: useRef(null)
   };
 
   // Проверяем, доступен ли real-time для текущего диапазона
   const isRealtimeAvailable = REALTIME_ENABLED_RANGES.includes(timeRange);
 
-  // Мемоизированные значения
   const chartData = useMemo(() => {
     if (!zoomDomain) return rawChartData;
-    
     return rawChartData.filter(item => 
       item.timestamp >= zoomDomain[0] && item.timestamp <= zoomDomain[1]
     );
   }, [rawChartData, zoomDomain]);
 
-  // Функция агрегации данных
   const aggregateDataForDisplay = useCallback((data, range) => {
     if (!data || data.length === 0) return [];
-    
     const maxPoints = MAX_DATA_POINTS[range] || 200;
-    
     if (data.length <= maxPoints) return data;
-    
     return lttb(data, maxPoints);
   }, []);
 
-  // Обработка новых данных от WebSocket
-  const handleWebSocketMessage = useCallback((newStatistics) => {
-    console.log('Received real-time statistics:', newStatistics);
+  // Обработка WebSocket сообщений (поддерживает оба типа статистики)
+  const handleWebSocketMessage = useCallback((message) => {
+    console.log('Received WebSocket message:', message);
     
+    // WebSocket может присылать разные форматы:
+    // 1. Прямо объект WebSocketStatsMessage
+    // 2. Объект с полем type и data
+    // 3. Массив статистики (для обратной совместимости)
+    
+    let messageType = null;
+    let messageData = null;
+    
+    if (message.type && (message.type === 'network' || message.type === 'media')) {
+      // Формат WebSocketStatsMessage
+      messageType = message.type;
+      messageData = message.data;
+    } else if (Array.isArray(message)) {
+      // Старый формат - массив network статистики
+      messageType = 'network';
+      messageData = message;
+    } else if (message.stat && message.stat.received_bytes !== undefined) {
+      // Одиночная network статистика
+      messageType = 'network';
+      messageData = [message];
+    } else if (message.avg_bitrate !== undefined) {
+      // Одиночная media статистика
+      messageType = 'media';
+      messageData = [message];
+    }
+    
+    if (!messageType || !messageData) {
+      console.warn('Unknown WebSocket message format:', message);
+      return;
+    }
+    
+    console.log(`Processing ${messageType} statistics from WebSocket`);
+    
+    // Обновляем данные в зависимости от типа
+    if (messageType === 'network') {
+      updateNetworkData(messageData);
+    } else if (messageType === 'media') {
+      updateMediaData(messageData);
+    }
+    
+    setLastUpdate(new Date());
+  }, [timeRange, aggregateDataForDisplay]);
+
+  // Обновление сетевых данных
+  const updateNetworkData = useCallback((newData) => {
     setRawChartData(prevData => {
-      if (!prevData || prevData.length === 0) return prevData;
-      
-      // Преобразуем новые данные в формат для графика
-      const newPoints = [];
-      
-      if (Array.isArray(newStatistics)) {
-        newStatistics.forEach(stat => {
-          const timestamp = stat.timestamp * 1000;
-          const date = new Date(timestamp);
-          
-          let timeLabel;
-          if (timeRange === '24h') {
-            timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-          } else {
-            timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          }
-          
-          // Находим предыдущую точку для расчета дельт
-          const prevPoint = prevData.length > 0 ? prevData[prevData.length - 1] : null;
-          
-          let receivedRate = 0;
-          let sentRate = 0;
-          let receivedBytesDelta = 0;
-          let sentBytesDelta = 0;
-          let receivedPacketsDelta = 0;
-          let sentPacketsDelta = 0;
-          let receivedErrorsDelta = 0;
-          let sentErrorsDelta = 0;
-          
-          if (prevPoint) {
-            const timeDiff = stat.timestamp - Math.floor(prevPoint.timestamp / 1000);
-            if (timeDiff > 0) {
-              receivedBytesDelta = Math.max(0, stat.stat.received_bytes - prevPoint.receivedBytes);
-              sentBytesDelta = Math.max(0, stat.stat.sent_bytes - prevPoint.sentBytes);
-              receivedPacketsDelta = Math.max(0, stat.stat.received_total_packets - prevPoint.receivedPackets);
-              sentPacketsDelta = Math.max(0, stat.stat.sent_total_packets - prevPoint.sentPackets);
-              
-              const currentReceivedErrors = stat.stat.received_error_packets || 0;
-              const prevReceivedErrors = prevPoint.receivedErrors || 0;
-              const currentSentErrors = stat.stat.sent_error_packets || 0;
-              const prevSentErrors = prevPoint.sentErrors || 0;
-              
-              receivedErrorsDelta = Math.max(0, currentReceivedErrors - prevReceivedErrors);
-              sentErrorsDelta = Math.max(0, currentSentErrors - prevSentErrors);
-              
-              receivedRate = Math.round((receivedBytesDelta * 8) / timeDiff);
-              sentRate = Math.round((sentBytesDelta * 8) / timeDiff);
-            }
-          }
-          
-          newPoints.push({
-            timestamp: timestamp,
-            time: timeLabel,
-            fullTime: date.toLocaleString('ru-RU'),
-            receivedBytes: stat.stat.received_bytes,
-            sentBytes: stat.stat.sent_bytes,
-            receivedPackets: stat.stat.received_total_packets,
-            sentPackets: stat.stat.sent_total_packets,
-            receivedErrors: stat.stat.received_error_packets || 0,
-            sentErrors: stat.stat.sent_error_packets || 0,
-            receivedErrorsDelta,
-            sentErrorsDelta,
-            receivedRate,
-            sentRate,
-            receivedPacketsDelta,
-            sentPacketsDelta,
-            speed: stat.speed,
-            duplex: stat.duplex,
-            ip: stat.ip
-          });
-        });
+      // Если текущий тип не network, сохраняем данные для последующего использования
+      if (statisticsType !== STATISTICS_TYPES.NETWORK) {
+        setPendingWsData(prev => ({ ...prev, network: newData }));
+        return prevData;
       }
       
-      // Объединяем старые и новые данные
+      if (!prevData || prevData.length === 0) return prevData;
+      
+      const newPoints = [];
+      const statsArray = Array.isArray(newData) ? newData : [newData];
+      
+      statsArray.forEach(stat => {
+        const timestamp = stat.timestamp * 1000;
+        const date = new Date(timestamp);
+        
+        let timeLabel;
+        if (timeRange === '24h') {
+          timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        } else {
+          timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        
+        const prevPoint = prevData.length > 0 ? prevData[prevData.length - 1] : null;
+        
+        let receivedRate = 0, sentRate = 0;
+        let receivedBytesDelta = 0, sentBytesDelta = 0;
+        let receivedPacketsDelta = 0, sentPacketsDelta = 0;
+        let receivedErrorsDelta = 0, sentErrorsDelta = 0;
+        
+        if (prevPoint) {
+          const timeDiff = stat.timestamp - Math.floor(prevPoint.timestamp / 1000);
+          if (timeDiff > 0) {
+            receivedBytesDelta = Math.max(0, stat.stat.received_bytes - prevPoint.receivedBytes);
+            sentBytesDelta = Math.max(0, stat.stat.sent_bytes - prevPoint.sentBytes);
+            receivedPacketsDelta = Math.max(0, stat.stat.received_total_packets - prevPoint.receivedPackets);
+            sentPacketsDelta = Math.max(0, stat.stat.sent_total_packets - prevPoint.sentPackets);
+            
+            const currentReceivedErrors = stat.stat.received_error_packets || 0;
+            const prevReceivedErrors = prevPoint.receivedErrors || 0;
+            const currentSentErrors = stat.stat.sent_error_packets || 0;
+            const prevSentErrors = prevPoint.sentErrors || 0;
+            
+            receivedErrorsDelta = Math.max(0, currentReceivedErrors - prevReceivedErrors);
+            sentErrorsDelta = Math.max(0, currentSentErrors - prevSentErrors);
+            
+            receivedRate = Math.round((receivedBytesDelta * 8) / timeDiff);
+            sentRate = Math.round((sentBytesDelta * 8) / timeDiff);
+          }
+        }
+        
+        newPoints.push({
+          timestamp, time: timeLabel,
+          fullTime: date.toLocaleString('ru-RU'),
+          receivedBytes: stat.stat.received_bytes,
+          sentBytes: stat.stat.sent_bytes,
+          receivedPackets: stat.stat.received_total_packets,
+          sentPackets: stat.stat.sent_total_packets,
+          receivedErrors: stat.stat.received_error_packets || 0,
+          sentErrors: stat.stat.sent_error_packets || 0,
+          receivedErrorsDelta, sentErrorsDelta,
+          receivedRate, sentRate,
+          receivedPacketsDelta, sentPacketsDelta,
+          speed: stat.speed, duplex: stat.duplex, ip: stat.ip
+        });
+      });
+      
       const combinedData = [...prevData, ...newPoints];
       
-      // Удаляем старые данные, выходящие за пределы временного диапазона
       const now = new Date();
       let cutoffTime;
-      
       switch (timeRange) {
         case '1h': cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); break;
         case '6h': cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
@@ -235,42 +282,351 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       
       const filteredData = combinedData.filter(point => point.timestamp >= cutoffTime.getTime());
       
-      // Применяем агрегацию
+      // Обновляем device info если есть новые данные
+      if (newPoints.length > 0) {
+        const lastPoint = newPoints[newPoints.length - 1];
+        setStatistics(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            device: {
+              ...prev.device,
+              ip_address: lastPoint.ip,
+              last_activity: new Date(lastPoint.timestamp).toISOString()
+            }
+          };
+        });
+      }
+      
       return aggregateDataForDisplay(filteredData, timeRange);
     });
-    
-    setLastUpdate(new Date());
-  }, [timeRange, aggregateDataForDisplay]);
+  }, [timeRange, aggregateDataForDisplay, statisticsType]);
 
-  // Callback для изменения статуса подключения
+  // Обновление медиа данных
+  const updateMediaData = useCallback((newData) => {
+    setRawChartData(prevData => {
+      // Если текущий тип не media, сохраняем данные для последующего использования
+      if (statisticsType !== STATISTICS_TYPES.MEDIA) {
+        setPendingWsData(prev => ({ ...prev, media: newData }));
+        return prevData;
+      }
+      
+      if (!prevData || prevData.length === 0) return prevData;
+      
+      const newPoints = [];
+      const statsArray = Array.isArray(newData) ? newData : [newData];
+      
+      statsArray.forEach(stat => {
+        const timestamp = stat.timestamp * 1000;
+        const date = new Date(timestamp);
+        
+        let timeLabel;
+        if (timeRange === '7d' || timeRange === '3d') {
+          timeLabel = date.toLocaleDateString('ru-RU', { 
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+          });
+        } else if (timeRange === '24h') {
+          timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        } else {
+          timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        let displayUrl = stat.url;
+        try {
+          const urlObj = new URL(stat.url);
+          displayUrl = urlObj.hostname + urlObj.pathname;
+          if (displayUrl.length > 40) {
+            displayUrl = displayUrl.substring(0, 37) + '...';
+          }
+        } catch (e) {
+          if (displayUrl.length > 40) {
+            displayUrl = displayUrl.substring(0, 37) + '...';
+          }
+        }
+
+        newPoints.push({
+          timestamp, time: timeLabel,
+          fullTime: date.toLocaleString('ru-RU'),
+          url: stat.url,
+          displayUrl,
+          avg_bitrate: stat.avg_bitrate,
+          begin: stat.begin,
+          end: stat.end,
+          discontinuities: stat.discontinuties || 0,
+          id: stat.id,
+          proto: stat.proto,
+          video_frames_decoded: stat.video?.frames_decoded || 0,
+          video_frames_dropped: stat.video?.frames_dropped || 0,
+          video_frames_failed: stat.video?.frames_failed || 0,
+          audio_frames_decoded: stat.audio?.frames_decoded || 0,
+          audio_frames_dropped: stat.audio?.frames_dropped || 0,
+          audio_frames_failed: stat.audio?.frames_failed || 0,
+          total_frames_decoded: (stat.video?.frames_decoded || 0) + (stat.audio?.frames_decoded || 0),
+          total_frames_dropped: (stat.video?.frames_dropped || 0) + (stat.audio?.frames_dropped || 0),
+          total_frames_failed: (stat.video?.frames_failed || 0) + (stat.audio?.frames_failed || 0)
+        });
+      });
+      
+      const combinedData = [...prevData, ...newPoints];
+      
+      const now = new Date();
+      let cutoffTime;
+      switch (timeRange) {
+        case '1h': cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); break;
+        case '6h': cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+        case '24h': cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+        default: return combinedData;
+      }
+      
+      const filteredData = combinedData.filter(point => point.timestamp >= cutoffTime.getTime());
+      return aggregateDataForDisplay(filteredData, timeRange);
+    });
+  }, [timeRange, aggregateDataForDisplay, statisticsType]);
+
   const handleConnectionChange = useCallback((connected) => {
     setIsRealtimeConnected(connected);
   }, []);
 
-  // Callback для обновления времени последнего обновления
   const handleUpdate = useCallback((date) => {
     setLastUpdate(date);
   }, []);
 
-  // Включение/выключение real-time при изменении диапазона или открытии/закрытии модалки
+  // Загрузка сетевой статистики
+  const loadNetworkStatistics = useCallback(async () => {
+    const now = new Date();
+    let startTime;
+
+    switch (timeRange) {
+      case '1h': startTime = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '3d': startTime = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000); break;
+      case '7d': startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      default: startTime = new Date(now.getTime() - 60 * 60 * 1000);
+    }
+
+    const formatDateTime = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
+    const data = await getNetworkStatistics({
+      mac_address: macAddress,
+      start_time: formatDateTime(startTime),
+      end_time: formatDateTime(now),
+      sort_by_timestamp: 'ascending'
+    });
+
+    return data;
+  }, [macAddress, timeRange]);
+
+  // Загрузка медиа-статистики
+  const loadMediaStatistics = useCallback(async () => {
+    const now = new Date();
+    let startTime;
+
+    switch (timeRange) {
+      case '1h': startTime = new Date(now.getTime() - 60 * 60 * 1000); break;
+      case '6h': startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
+      case '24h': startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '3d': startTime = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000); break;
+      case '7d': startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      default: startTime = new Date(now.getTime() - 60 * 60 * 1000);
+    }
+
+    const formatDateTime = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
+    const data = await getMediaStatistics({
+      mac_address: macAddress,
+      start_time: formatDateTime(startTime),
+      end_time: formatDateTime(now),
+      sort_by_timestamp: 'ascending'
+    });
+
+    return data;
+  }, [macAddress, timeRange]);
+
+  // Основная функция загрузки
+  const loadStatistics = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setZoomDomain(null);
+
+      let data;
+      if (statisticsType === STATISTICS_TYPES.NETWORK) {
+        data = await loadNetworkStatistics();
+      } else {
+        data = await loadMediaStatistics();
+      }
+
+      console.log('Received statistics:', data);
+      setStatistics(data);
+      
+      if (data.device && data.device.id) {
+        setDeviceId(data.device.id);
+      }
+      
+      // Обрабатываем данные в зависимости от типа
+      const processed = [];
+      const stats = data.statistics;
+      
+      if (stats && stats.length > 0) {
+        if (statisticsType === STATISTICS_TYPES.NETWORK) {
+          // Обработка сетевой статистики (код без изменений)
+          stats.forEach((stat, index) => {
+            const timestamp = stat.timestamp * 1000;
+            const date = new Date(timestamp);
+            let timeLabel;
+            
+            if (timeRange === '7d' || timeRange === '3d') {
+              timeLabel = date.toLocaleDateString('ru-RU', { 
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+              });
+            } else if (timeRange === '24h') {
+              timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            } else {
+              timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+
+            let receivedRate = 0, sentRate = 0;
+            let receivedBytesDelta = 0, sentBytesDelta = 0;
+            let receivedPacketsDelta = 0, sentPacketsDelta = 0;
+            let receivedErrorsDelta = 0, sentErrorsDelta = 0;
+
+            if (index > 0) {
+              const prevStat = stats[index - 1];
+              const timeDiff = stat.timestamp - prevStat.timestamp;
+
+              if (timeDiff > 0) {
+                receivedBytesDelta = Math.max(0, stat.stat.received_bytes - prevStat.stat.received_bytes);
+                sentBytesDelta = Math.max(0, stat.stat.sent_bytes - prevStat.stat.sent_bytes);
+                receivedPacketsDelta = Math.max(0, stat.stat.received_total_packets - prevStat.stat.received_total_packets);
+                sentPacketsDelta = Math.max(0, stat.stat.sent_total_packets - prevStat.stat.sent_total_packets);
+                
+                const currentReceivedErrors = stat.stat.received_error_packets || 0;
+                const prevReceivedErrors = prevStat.stat.received_error_packets || 0;
+                const currentSentErrors = stat.stat.sent_error_packets || 0;
+                const prevSentErrors = prevStat.stat.sent_error_packets || 0;
+                
+                receivedErrorsDelta = Math.max(0, currentReceivedErrors - prevReceivedErrors);
+                sentErrorsDelta = Math.max(0, currentSentErrors - prevSentErrors);
+
+                receivedRate = Math.round((receivedBytesDelta * 8) / timeDiff);
+                sentRate = Math.round((sentBytesDelta * 8) / timeDiff);
+              }
+            }
+
+            processed.push({
+              timestamp, time: timeLabel,
+              fullTime: date.toLocaleString('ru-RU'),
+              receivedBytes: stat.stat.received_bytes,
+              sentBytes: stat.stat.sent_bytes,
+              receivedPackets: stat.stat.received_total_packets,
+              sentPackets: stat.stat.sent_total_packets,
+              receivedErrors: stat.stat.received_error_packets || 0,
+              sentErrors: stat.stat.sent_error_packets || 0,
+              receivedErrorsDelta, sentErrorsDelta,
+              receivedRate, sentRate,
+              receivedPacketsDelta, sentPacketsDelta,
+              speed: stat.speed, duplex: stat.duplex, ip: stat.ip
+            });
+          });
+        } else {
+          // Обработка медиа-статистики (код без изменений)
+          stats.forEach((stat) => {
+            const timestamp = stat.timestamp * 1000;
+            const date = new Date(timestamp);
+            let timeLabel;
+            
+            if (timeRange === '7d' || timeRange === '3d') {
+              timeLabel = date.toLocaleDateString('ru-RU', { 
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+              });
+            } else if (timeRange === '24h') {
+              timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            } else {
+              timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+
+            let displayUrl = stat.url;
+            try {
+              const urlObj = new URL(stat.url);
+              displayUrl = urlObj.hostname + urlObj.pathname;
+              if (displayUrl.length > 40) {
+                displayUrl = displayUrl.substring(0, 37) + '...';
+              }
+            } catch (e) {
+              if (displayUrl.length > 40) {
+                displayUrl = displayUrl.substring(0, 37) + '...';
+              }
+            }
+
+            processed.push({
+              timestamp, time: timeLabel,
+              fullTime: date.toLocaleString('ru-RU'),
+              url: stat.url,
+              displayUrl,
+              avg_bitrate: stat.avg_bitrate,
+              begin: stat.begin,
+              end: stat.end,
+              discontinuities: stat.discontinuties || 0,
+              id: stat.id,
+              proto: stat.proto,
+              video_frames_decoded: stat.video?.frames_decoded || 0,
+              video_frames_dropped: stat.video?.frames_dropped || 0,
+              video_frames_failed: stat.video?.frames_failed || 0,
+              audio_frames_decoded: stat.audio?.frames_decoded || 0,
+              audio_frames_dropped: stat.audio?.frames_dropped || 0,
+              audio_frames_failed: stat.audio?.frames_failed || 0,
+              total_frames_decoded: (stat.video?.frames_decoded || 0) + (stat.audio?.frames_decoded || 0),
+              total_frames_dropped: (stat.video?.frames_dropped || 0) + (stat.audio?.frames_dropped || 0),
+              total_frames_failed: (stat.video?.frames_failed || 0) + (stat.audio?.frames_failed || 0)
+            });
+          });
+        }
+      }
+      
+      const aggregated = aggregateDataForDisplay(processed, timeRange);
+      setRawChartData(aggregated);
+      
+    } catch (err) {
+      console.error('Failed to load statistics:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to load statistics');
+    } finally {
+      setLoading(false);
+    }
+  }, [macAddress, timeRange, statisticsType, loadNetworkStatistics, loadMediaStatistics, aggregateDataForDisplay]);
+
+  // WebSocket эффект - подключаемся всегда, независимо от типа статистики
   useEffect(() => {
     if (isOpen && deviceId && isRealtimeAvailable) {
-      // Подключаем WebSocket с device.id для real-time диапазонов
       console.log('Enabling real-time for device:', deviceId);
       statisticsWebSocket.enableRealtime(
-        deviceId,  // Используем UUID устройства вместо MAC
+        deviceId,
         handleWebSocketMessage,
         handleConnectionChange,
         handleUpdate
       );
     } else if (!isRealtimeAvailable || !deviceId) {
-      // Отключаем WebSocket для не-real-time диапазонов или если нет deviceId
       statisticsWebSocket.disableRealtime();
       setIsRealtimeConnected(false);
     }
     
     return () => {
-      // При изменении зависимостей отключаем WebSocket
       if (!isOpen || !isRealtimeAvailable) {
         statisticsWebSocket.disableRealtime();
         setIsRealtimeConnected(false);
@@ -278,14 +634,41 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     };
   }, [isOpen, deviceId, isRealtimeAvailable, handleWebSocketMessage, handleConnectionChange, handleUpdate]);
 
-  // При изменении timeRange перезагружаем данные если не real-time
+  // При переключении типа статистики проверяем pending данные
   useEffect(() => {
-    if (isOpen && deviceId && !isRealtimeAvailable) {
+    if (pendingWsData[statisticsType] && pendingWsData[statisticsType].length > 0) {
+      console.log(`Applying pending ${statisticsType} data from WebSocket`);
+      if (statisticsType === STATISTICS_TYPES.NETWORK) {
+        updateNetworkData(pendingWsData.network);
+      } else {
+        updateMediaData(pendingWsData.media);
+      }
+      setPendingWsData(prev => ({ ...prev, [statisticsType]: [] }));
+    }
+  }, [statisticsType, pendingWsData, updateNetworkData, updateMediaData]);
+
+  // Загрузка данных при изменении параметров
+  useEffect(() => {
+    if (isOpen && macAddress) {
       loadStatistics();
     }
-  }, [timeRange, isRealtimeAvailable]);
+  }, [isOpen, macAddress, timeRange, statisticsType, loadStatistics]);
 
-  // Получение текущего домена X
+  useEffect(() => {
+    const updateDimensions = () => {
+      Object.keys(chartRefs).forEach(key => {
+        if (chartRefs[key].current) {
+          const rect = chartRefs[key].current.getBoundingClientRect();
+          setChartDimensions(prev => ({ ...prev, [key]: rect }));
+        }
+      });
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [chartData]);
+
   const getCurrentXDomain = useCallback(() => {
     if (zoomDomain) return zoomDomain;
     if (rawChartData.length === 0) return [0, 1];
@@ -305,7 +688,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return [startTime.getTime(), now.getTime()];
   }, [zoomDomain, rawChartData, timeRange]);
 
-  // Преобразование координаты мыши в значение домена
   const mouseToDomain = useCallback((chartId, clientX) => {
     const dimensions = chartDimensions[chartId];
     if (!dimensions) return null;
@@ -321,37 +703,28 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return domain[0] + (percentage * domainRange);
   }, [chartDimensions, getCurrentXDomain]);
 
-  // Обработчики для выделения мышью
   const handleMouseDown = useCallback((chartId) => (e) => {
     if (e.button !== 0) return;
-    
     const domainValue = mouseToDomain(chartId, e.clientX);
     if (domainValue === null) return;
-
     setIsSelecting(true);
     setSelectionStart(domainValue);
     setSelectionEnd(domainValue);
     setActiveZoomChart(chartId);
-    
     e.preventDefault();
   }, [mouseToDomain]);
 
   const handleMouseMove = useCallback((chartId) => (e) => {
     if (!isSelecting || activeZoomChart !== chartId) return;
-
     requestAnimationFrame(() => {
       const domainValue = mouseToDomain(chartId, e.clientX);
-      if (domainValue !== null) {
-        setSelectionEnd(domainValue);
-      }
+      if (domainValue !== null) setSelectionEnd(domainValue);
     });
-    
     e.preventDefault();
   }, [isSelecting, activeZoomChart, mouseToDomain]);
 
   const handleMouseUp = useCallback((chartId) => (e) => {
     if (!isSelecting || activeZoomChart !== chartId) return;
-
     const domainValue = mouseToDomain(chartId, e.clientX);
     if (domainValue === null) {
       setIsSelecting(false);
@@ -359,21 +732,16 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       setSelectionEnd(null);
       return;
     }
-
     const start = Math.min(selectionStart, domainValue);
     const end = Math.max(selectionStart, domainValue);
-
     const domain = getCurrentXDomain();
     const minSelection = (domain[1] - domain[0]) * 0.01;
-    
     if (end - start > minSelection) {
       setZoomDomain([start, end]);
     }
-
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionEnd(null);
-    
     e.preventDefault();
   }, [isSelecting, activeZoomChart, mouseToDomain, selectionStart, getCurrentXDomain]);
 
@@ -390,35 +758,24 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     setActiveZoomChart(null);
   }, []);
 
-  const handleDoubleClick = useCallback(() => {
-    resetZoom();
-  }, [resetZoom]);
+  const handleDoubleClick = useCallback(() => resetZoom(), [resetZoom]);
 
-  // Компонент выделения
   const SelectionOverlay = useCallback(({ chartId }) => {
     if (!isSelecting || activeZoomChart !== chartId || selectionStart === null || selectionEnd === null) {
       return null;
     }
-
     const start = Math.min(selectionStart, selectionEnd);
     const end = Math.max(selectionStart, selectionEnd);
-    
     return (
       <rect
-        x={start}
-        y="0"
-        width={end - start}
-        height="100%"
-        fill="rgba(136, 132, 216, 0.2)"
-        stroke="#8884d8"
-        strokeWidth="2"
-        strokeDasharray="5,5"
+        x={start} y="0" width={end - start} height="100%"
+        fill="rgba(136, 132, 216, 0.2)" stroke="#8884d8"
+        strokeWidth="2" strokeDasharray="5,5"
         style={{ pointerEvents: 'none' }}
       />
     );
   }, [isSelecting, activeZoomChart, selectionStart, selectionEnd]);
 
-  // Форматирование значений
   const formatBytes = useCallback((bytes) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -437,7 +794,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
 
   const formatXAxis = useCallback((timestamp) => {
     const date = new Date(timestamp);
-    
     if (timeRange === '7d' || timeRange === '3d') {
       return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
     } else if (timeRange === '24h') {
@@ -466,209 +822,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return [startTime.getTime(), now.getTime()];
   }, [zoomDomain, rawChartData, timeRange]);
 
-  // Статистика метрик
-  const metricStats = useMemo(() => {
-    if (chartData.length < 2) return null;
-
-    const receivedRates = chartData.slice(1).map(d => d.receivedRate).filter(r => r > 0);
-    const sentRates = chartData.slice(1).map(d => d.sentRate).filter(r => r > 0);
-
-    const max = (arr) => arr.length > 0 ? Math.max(...arr) : 0;
-    const avg = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-
-    const lastDataPoint = chartData[chartData.length - 1];
-
-    return {
-      received: { max: max(receivedRates), avg: avg(receivedRates) },
-      sent: { max: max(sentRates), avg: avg(sentRates) },
-      totalReceived: lastDataPoint?.receivedBytes || 0,
-      totalSent: lastDataPoint?.sentBytes || 0,
-      totalReceivedPackets: lastDataPoint?.receivedPackets || 0,
-      totalSentPackets: lastDataPoint?.sentPackets || 0,
-      totalReceivedErrors: lastDataPoint?.receivedErrors || 0,
-      totalSentErrors: lastDataPoint?.sentErrors || 0
-    };
-  }, [chartData]);
-
-  const loadStatistics = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setZoomDomain(null);
-
-      const now = new Date();
-      let startTime;
-
-      switch (timeRange) {
-        case '1h':
-          startTime = new Date(now.getTime() - 60 * 60 * 1000);
-          break;
-        case '6h':
-          startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-          break;
-        case '24h':
-          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          break;
-        case '3d':
-          startTime = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-          break;
-        case '7d':
-          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          startTime = new Date(now.getTime() - 60 * 60 * 1000);
-      }
-
-      const formatDateTime = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-      };
-
-      const data = await getNetworkStatistics({
-        mac_address: macAddress,
-        start_time: formatDateTime(startTime),
-        end_time: formatDateTime(now),
-        sort_by_timestamp: 'ascending'
-      });
-
-      console.log('Received statistics:', data);
-      setStatistics(data);
-      
-      // Сохраняем device.id для WebSocket
-      if (data.device && data.device.id) {
-        setDeviceId(data.device.id);
-        console.log('Device ID for WebSocket:', data.device.id);
-      }
-      
-      // Обрабатываем данные
-      const processed = [];
-      const stats = data.statistics;
-      
-      if (stats && stats.length > 0) {
-        stats.forEach((stat, index) => {
-          const timestamp = stat.timestamp * 1000;
-          
-          const date = new Date(timestamp);
-          let timeLabel;
-          
-          if (timeRange === '7d' || timeRange === '3d') {
-            timeLabel = date.toLocaleDateString('ru-RU', { 
-              day: '2-digit', 
-              month: '2-digit',
-              hour: '2-digit', 
-              minute: '2-digit'
-            });
-          } else if (timeRange === '24h') {
-            timeLabel = date.toLocaleTimeString('ru-RU', { 
-              hour: '2-digit', 
-              minute: '2-digit'
-            });
-          } else {
-            timeLabel = date.toLocaleTimeString('ru-RU', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              second: '2-digit'
-            });
-          }
-
-          let receivedRate = 0;
-          let sentRate = 0;
-          let receivedBytesDelta = 0;
-          let sentBytesDelta = 0;
-          let receivedPacketsDelta = 0;
-          let sentPacketsDelta = 0;
-          let receivedErrorsDelta = 0;
-          let sentErrorsDelta = 0;
-
-          if (index > 0) {
-            const prevStat = stats[index - 1];
-            const timeDiff = stat.timestamp - prevStat.timestamp;
-
-            if (timeDiff > 0) {
-              receivedBytesDelta = Math.max(0, stat.stat.received_bytes - prevStat.stat.received_bytes);
-              sentBytesDelta = Math.max(0, stat.stat.sent_bytes - prevStat.stat.sent_bytes);
-              receivedPacketsDelta = Math.max(0, stat.stat.received_total_packets - prevStat.stat.received_total_packets);
-              sentPacketsDelta = Math.max(0, stat.stat.sent_total_packets - prevStat.stat.sent_total_packets);
-              
-              const currentReceivedErrors = stat.stat.received_error_packets || 0;
-              const prevReceivedErrors = prevStat.stat.received_error_packets || 0;
-              const currentSentErrors = stat.stat.sent_error_packets || 0;
-              const prevSentErrors = prevStat.stat.sent_error_packets || 0;
-              
-              receivedErrorsDelta = Math.max(0, currentReceivedErrors - prevReceivedErrors);
-              sentErrorsDelta = Math.max(0, currentSentErrors - prevSentErrors);
-
-              receivedRate = Math.round((receivedBytesDelta * 8) / timeDiff);
-              sentRate = Math.round((sentBytesDelta * 8) / timeDiff);
-            }
-          }
-
-          processed.push({
-            timestamp: timestamp,
-            time: timeLabel,
-            fullTime: date.toLocaleString('ru-RU'),
-            receivedBytes: stat.stat.received_bytes,
-            sentBytes: stat.stat.sent_bytes,
-            receivedPackets: stat.stat.received_total_packets,
-            sentPackets: stat.stat.sent_total_packets,
-            receivedErrors: stat.stat.received_error_packets || 0,
-            sentErrors: stat.stat.sent_error_packets || 0,
-            receivedErrorsDelta,
-            sentErrorsDelta,
-            receivedRate,
-            sentRate,
-            receivedPacketsDelta,
-            sentPacketsDelta,
-            speed: stat.speed,
-            duplex: stat.duplex,
-            ip: stat.ip
-          });
-        });
-      }
-      
-      const aggregated = aggregateDataForDisplay(processed, timeRange);
-      setRawChartData(aggregated);
-      
-    } catch (err) {
-      console.error('Failed to load statistics:', err);
-      setError(err.response?.data?.detail || err.message || 'Failed to load statistics');
-    } finally {
-      setLoading(false);
-    }
-  }, [macAddress, timeRange, aggregateDataForDisplay]);
-
-  // Эффекты для начальной загрузки
-  useEffect(() => {
-    if (isOpen && macAddress) {
-      loadStatistics();
-    }
-  }, [isOpen, macAddress, loadStatistics]);
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      Object.keys(chartRefs).forEach(key => {
-        if (chartRefs[key].current) {
-          const rect = chartRefs[key].current.getBoundingClientRect();
-          setChartDimensions(prev => ({
-            ...prev,
-            [key]: rect
-          }));
-        }
-      });
-    };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, [chartData]);
-
-  const xAxisDomain = getXAxisDomain();
-
   const getBarConfig = useCallback((range, dataLength) => {
     const configs = {
       '1h': { maxBarSize: 30, barCategoryGap: 0, barGap: 0 },
@@ -681,125 +834,58 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     const config = configs[range] || { maxBarSize: 30, barCategoryGap: 0, barGap: 0 };
     
     if (dataLength > 500) {
-      return {
-        ...config,
-        maxBarSize: Math.min(40, config.maxBarSize * 2),
-      };
+      return { ...config, maxBarSize: Math.min(40, config.maxBarSize * 2) };
     }
-    
     if (zoomDomain) {
-      return {
-        ...config,
-        maxBarSize: Math.min(30, config.maxBarSize * 1.5),
-      };
+      return { ...config, maxBarSize: Math.min(30, config.maxBarSize * 1.5) };
     }
-    
     return config;
   }, [zoomDomain]);
 
-  // Функция рендера графика
-  const renderChart = useCallback((chartId, title, icon, height, bars) => {
-    const barConfig = getBarConfig(timeRange, chartData.length);
-    
-    return (
-      <div className="chart-section" key={chartId}>
-        <h3 className="chart-title">
-          {icon}
-          {title}
-          {zoomDomain && activeZoomChart === chartId && <span className="zoom-badge">Zoomed</span>}
-        </h3>
-        <div 
-          className="chart-container"
-          ref={chartRefs[chartId]}
-          onMouseDown={handleMouseDown(chartId)}
-          onMouseMove={handleMouseMove(chartId)}
-          onMouseUp={handleMouseUp(chartId)}
-          onMouseLeave={handleMouseLeave(chartId)}
-          onDoubleClick={handleDoubleClick}
-          style={{ cursor: isSelecting && activeZoomChart === chartId ? 'col-resize' : 'crosshair' }}
-        >
-          <ResponsiveContainer width="100%" height={height}>
-            <BarChart 
-              data={chartData} 
-              margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
-              barCategoryGap={barConfig.barCategoryGap}
-              barGap={barConfig.barGap}
-            >
-              <CartesianGrid 
-                strokeDasharray="2 4" 
-                stroke="rgba(128, 128, 128, 0.08)"
-                vertical={true}
-                horizontal={true}
-              />
-              <XAxis 
-                dataKey="timestamp"
-                type="number"
-                domain={xAxisDomain}
-                tickFormatter={formatXAxis}
-                tick={{ fontSize: 12 }}
-                angle={-45}
-                textAnchor="end"
-                height={60}
-                scale="time"
-              />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={chartId === 'traffic' ? formatBits : undefined} />
-              <Tooltip 
-                formatter={chartId === 'traffic' ? 
-                  (value, name) => [formatBits(value), name === 'receivedRate' ? 'Download' : 'Upload'] :
-                  (value, name) => [value.toLocaleString(), name]
-                }
-                labelFormatter={(timestamp) => `Time: ${new Date(timestamp).toLocaleString('ru-RU')}`}
-              />
-              <Legend />
-              {bars.map((bar, index) => (
-                <Bar 
-                  key={index}
-                  dataKey={bar.dataKey}
-                  name={bar.name}
-                  fill={bar.fill}
-                  opacity={0.85}
-                  isAnimationActive={false}
-                  maxBarSize={barConfig.maxBarSize}
-                />
-              ))}
-              {chartData.length > 0 && (
-                <ReferenceLine 
-                  x={chartData[chartData.length - 1].timestamp} 
-                  stroke="#ff0000" 
-                  strokeWidth={1}
-                  strokeDasharray="3 3"
-                  label={chartId === 'traffic' ? { value: 'Latest', position: 'top', fontSize: 10, fill: '#ff0000' } : undefined}
-                />
-              )}
-              <SelectionOverlay chartId={chartId} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
-      </div>
-    );
-  }, [chartData, xAxisDomain, formatXAxis, formatBits, zoomDomain, activeZoomChart, isSelecting, handleMouseDown, handleMouseMove, handleMouseUp, handleMouseLeave, handleDoubleClick, SelectionOverlay, timeRange, getBarConfig]);
+  const xAxisDomain = getXAxisDomain();
 
   if (!isOpen) return null;
+
+  const isNetworkStats = statisticsType === STATISTICS_TYPES.NETWORK;
+  const isMediaStats = statisticsType === STATISTICS_TYPES.MEDIA;
+
+  // Определяем статус подключения для отображения
+  const showRealtimeStatus = isRealtimeAvailable;
+  const realtimeActive = isRealtimeConnected;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content statistics-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>
-            <Activity size={20} />
-            Network Statistics - {macAddress}
+            {isNetworkStats ? <Activity size={20} /> : <Radio size={20} />}
+            {isNetworkStats ? 'Network' : 'Media'} Statistics - {macAddress}
           </h2>
           <div className="modal-header-controls">
-            {/* Индикатор real-time подключения */}
-            {isRealtimeAvailable && (
-              <div className={`realtime-indicator ${isRealtimeConnected ? 'connected' : 'disconnected'}`} title={isRealtimeConnected ? 'Real-time connected' : 'Real-time disconnected'}>
-                {isRealtimeConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
-                <span>{isRealtimeConnected ? 'Live' : 'Offline'}</span>
+            {/* Переключатель Network/Media */}
+            <div className="statistics-type-selector">
+              <button 
+                className={isNetworkStats ? 'active' : ''} 
+                onClick={() => setStatisticsType(STATISTICS_TYPES.NETWORK)}
+              >
+                <Activity size={14} /> Network
+              </button>
+              <button 
+                className={isMediaStats ? 'active' : ''} 
+                onClick={() => setStatisticsType(STATISTICS_TYPES.MEDIA)}
+              >
+                <Film size={14} /> Media
+              </button>
+            </div>
+            
+            {showRealtimeStatus && (
+              <div className={`realtime-indicator ${realtimeActive ? 'connected' : 'disconnected'}`}>
+                {realtimeActive ? <Wifi size={16} /> : <WifiOff size={16} />}
+                <span>{realtimeActive ? 'Live' : 'Offline'}</span>
               </div>
             )}
             {zoomDomain && (
-              <button className="reset-zoom-button" onClick={resetZoom} title="Reset Zoom (Double-click on chart)">
+              <button className="reset-zoom-button" onClick={resetZoom}>
                 <ZoomOut size={18} />
                 <span>Reset Zoom</span>
               </button>
@@ -813,13 +899,13 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         <div className="modal-body">
           <div className="time-range-selector">
             <button className={timeRange === '1h' ? 'active' : ''} onClick={() => setTimeRange('1h')}>
-              1 Hour {REALTIME_ENABLED_RANGES.includes('1h') && <Wifi size={12} />}
+              1 Hour {showRealtimeStatus && <Wifi size={12} />}
             </button>
             <button className={timeRange === '6h' ? 'active' : ''} onClick={() => setTimeRange('6h')}>
-              6 Hours {REALTIME_ENABLED_RANGES.includes('6h') && <Wifi size={12} />}
+              6 Hours {showRealtimeStatus && <Wifi size={12} />}
             </button>
             <button className={timeRange === '24h' ? 'active' : ''} onClick={() => setTimeRange('24h')}>
-              24 Hours {REALTIME_ENABLED_RANGES.includes('24h') && <Wifi size={12} />}
+              24 Hours {showRealtimeStatus && <Wifi size={12} />}
             </button>
             <button className={timeRange === '3d' ? 'active' : ''} onClick={() => setTimeRange('3d')}>
               3 Days
@@ -829,17 +915,14 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             </button>
           </div>
 
-          {/* Информация о real-time */}
-          {isRealtimeAvailable && (
-            <div className={`realtime-status ${isRealtimeConnected ? 'connected' : 'disconnected'}`}>
-              {isRealtimeConnected ? (
+          {showRealtimeStatus && (
+            <div className={`realtime-status ${realtimeActive ? 'connected' : 'disconnected'}`}>
+              {realtimeActive ? (
                 <>
                   <Wifi size={14} />
-                  <span>Real-time updates active</span>
+                  <span>Real-time updates active (both Network and Media)</span>
                   {lastUpdate && (
-                    <span className="last-update">
-                      Last update: {lastUpdate.toLocaleTimeString('ru-RU')}
-                    </span>
+                    <span className="last-update">Last update: {lastUpdate.toLocaleTimeString('ru-RU')}</span>
                   )}
                 </>
               ) : (
@@ -861,7 +944,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
           {loading && (
             <div className="loading-state">
               <div className="spinner"></div>
-              <p>Loading statistics...</p>
+              <p>Loading {isNetworkStats ? 'network' : 'media'} statistics...</p>
             </div>
           )}
 
@@ -875,71 +958,248 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
 
           {!loading && !error && rawChartData.length === 0 && (
             <div className="no-data-state">
-              <Activity size={48} />
-              <p>No statistics data available for this time range</p>
+              {isNetworkStats ? <Activity size={48} /> : <Radio size={48} />}
+              <p>No {isNetworkStats ? 'network' : 'media'} statistics available</p>
             </div>
           )}
 
           {!loading && !error && chartData.length > 0 && (
             <>
-              {metricStats && (
-                <div className="stats-summary">
-                  <div className="stat-card received">
-                    <div className="stat-icon"><TrendingDown size={20} /></div>
-                    <div className="stat-info">
-                      <div className="stat-label">Download {zoomDomain && '(Zoomed)'}</div>
-                      <div className="stat-value">
-                        <div>Avg: {formatBits(metricStats.received.avg)}</div>
-                        <div>Max: {formatBits(metricStats.received.max)}</div>
-                        <div>Total: {formatBytes(metricStats.totalReceived)}</div>
-                      </div>
+              {/* Network Stats Charts */}
+              {isNetworkStats && (
+                <>
+                  {/* Traffic Rate Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <TrendingUp size={18} /> Traffic Rate (bits per second)
+                      {zoomDomain && activeZoomChart === 'chart1' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div 
+                      className="chart-container" ref={chartRefs.chart1}
+                      onMouseDown={handleMouseDown('chart1')}
+                      onMouseMove={handleMouseMove('chart1')}
+                      onMouseUp={handleMouseUp('chart1')}
+                      onMouseLeave={handleMouseLeave('chart1')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart1' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                          barCategoryGap={getBarConfig(timeRange, chartData.length).barCategoryGap}
+                          barGap={getBarConfig(timeRange, chartData.length).barGap}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis tick={{ fontSize: 12 }} tickFormatter={formatBits} />
+                          <Tooltip formatter={(value, name) => [formatBits(value), name === 'receivedRate' ? 'Download' : 'Upload']}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Legend />
+                          <Bar dataKey="receivedRate" name="Download" fill="#82ca9d" opacity={0.85}
+                            isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
+                          <Bar dataKey="sentRate" name="Upload" fill="#8884d8" opacity={0.85}
+                            isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
+                          {chartData.length > 0 && (
+                            <ReferenceLine x={chartData[chartData.length - 1].timestamp} stroke="#ff0000"
+                              strokeWidth={1} strokeDasharray="3 3"
+                              label={{ value: 'Latest', position: 'top', fontSize: 10, fill: '#ff0000' }} />
+                          )}
+                          <SelectionOverlay chartId="chart1" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
-                  <div className="stat-card sent">
-                    <div className="stat-icon"><TrendingUp size={20} /></div>
-                    <div className="stat-info">
-                      <div className="stat-label">Upload {zoomDomain && '(Zoomed)'}</div>
-                      <div className="stat-value">
-                        <div>Avg: {formatBits(metricStats.sent.avg)}</div>
-                        <div>Max: {formatBits(metricStats.sent.max)}</div>
-                        <div>Total: {formatBytes(metricStats.totalSent)}</div>
-                      </div>
+
+                  {/* Packets Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <Activity size={18} /> Packets per Interval
+                      {zoomDomain && activeZoomChart === 'chart2' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div 
+                      className="chart-container" ref={chartRefs.chart2}
+                      onMouseDown={handleMouseDown('chart2')}
+                      onMouseMove={handleMouseMove('chart2')}
+                      onMouseUp={handleMouseUp('chart2')}
+                      onMouseLeave={handleMouseLeave('chart2')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart2' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                          barCategoryGap={getBarConfig(timeRange, chartData.length).barCategoryGap}
+                          barGap={getBarConfig(timeRange, chartData.length).barGap}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip formatter={(value, name) => [value.toLocaleString(), name]}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Legend />
+                          <Bar dataKey="receivedPacketsDelta" name="Received Packets" fill="#82ca9d" opacity={0.85}
+                            isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
+                          <Bar dataKey="sentPacketsDelta" name="Sent Packets" fill="#8884d8" opacity={0.85}
+                            isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
+                          <SelectionOverlay chartId="chart2" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
-                  {statistics?.device && chartData.length > 0 && (
-                    <div className="stat-card device">
-                      <div className="stat-info">
-                        <div className="stat-label">Connection Info</div>
-                        <div className="stat-value">
-                          <div>{chartData[0]?.speed} Mbps {chartData[0]?.duplex}</div>
-                          <div>{chartData[0]?.ip}</div>
-                        </div>
-                      </div>
+
+                  {/* Errors Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <AlertTriangle size={18} /> Errors per Interval
+                      {zoomDomain && activeZoomChart === 'chart3' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div 
+                      className="chart-container" ref={chartRefs.chart3}
+                      onMouseDown={handleMouseDown('chart3')}
+                      onMouseMove={handleMouseMove('chart3')}
+                      onMouseUp={handleMouseUp('chart3')}
+                      onMouseLeave={handleMouseLeave('chart3')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart3' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                          barCategoryGap={getBarConfig(timeRange, chartData.length).barCategoryGap}
+                          barGap={getBarConfig(timeRange, chartData.length).barGap}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip formatter={(value, name) => [value.toLocaleString(), name]}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Legend />
+                          <Bar dataKey="receivedErrorsDelta" name="Received Errors" fill="#ff7300" opacity={0.85}
+                            isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
+                          <Bar dataKey="sentErrorsDelta" name="Sent Errors" fill="#ff0000" opacity={0.85}
+                            isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
+                          <SelectionOverlay chartId="chart3" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  )}
-                </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
+                  </div>
+                </>
               )}
 
-              {renderChart('traffic', 'Traffic Rate (bits per second)', <TrendingUp size={18} />, 350, [
-                { dataKey: 'receivedRate', name: 'Download', fill: '#82ca9d' },
-                { dataKey: 'sentRate', name: 'Upload', fill: '#8884d8' }
-              ])}
+              {/* Media Stats Charts */}
+              {isMediaStats && (
+                <>
+                  {/* Bitrate Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <Radio size={18} /> Average Bitrate (bps)
+                      {zoomDomain && activeZoomChart === 'chart1' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div 
+                      className="chart-container" ref={chartRefs.chart1}
+                      onMouseDown={handleMouseDown('chart1')}
+                      onMouseMove={handleMouseMove('chart1')}
+                      onMouseUp={handleMouseUp('chart1')}
+                      onMouseLeave={handleMouseLeave('chart1')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart1' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={300}>
+                        <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis tick={{ fontSize: 12 }} tickFormatter={formatBits} />
+                          <Tooltip formatter={(value) => formatBits(value)}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Legend />
+                          <Area type="monotone" dataKey="avg_bitrate" name="Bitrate" 
+                            fill="#8884d8" stroke="#8884d8" fillOpacity={0.3} />
+                          <SelectionOverlay chartId="chart1" />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
+                  </div>
 
-              {renderChart('packets', 'Packets per Interval', <Activity size={18} />, 300, [
-                { dataKey: 'receivedPacketsDelta', name: 'Received Packets', fill: '#82ca9d' },
-                { dataKey: 'sentPacketsDelta', name: 'Sent Packets', fill: '#8884d8' }
-              ])}
+                  {/* Video Frames Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <Video size={18} /> Video Frames
+                      {zoomDomain && activeZoomChart === 'chart2' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div 
+                      className="chart-container" ref={chartRefs.chart2}
+                      onMouseDown={handleMouseDown('chart2')}
+                      onMouseMove={handleMouseMove('chart2')}
+                      onMouseUp={handleMouseUp('chart2')}
+                      onMouseLeave={handleMouseLeave('chart2')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart2' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Legend />
+                          <Line type="monotone" dataKey="video_frames_decoded" name="Decoded" 
+                            stroke="#82ca9d" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="video_frames_dropped" name="Dropped" 
+                            stroke="#ff7300" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="video_frames_failed" name="Failed" 
+                            stroke="#ff0000" strokeWidth={2} dot={false} />
+                          <SelectionOverlay chartId="chart2" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
+                  </div>
 
-              {renderChart('errors', 'Errors per Interval', <AlertTriangle size={18} />, 300, [
-                { dataKey: 'receivedErrorsDelta', name: 'Received Errors', fill: '#ff7300' },
-                { dataKey: 'sentErrorsDelta', name: 'Sent Errors', fill: '#ff0000' }
-              ])}
-              
-              {metricStats && (metricStats.totalReceivedErrors > 0 || metricStats.totalSentErrors > 0) && (
-                <div className="error-stats-summary">
-                  <span className="error-stat received">Total Received Errors: {metricStats.totalReceivedErrors}</span>
-                  <span className="error-stat sent">Total Sent Errors: {metricStats.totalSentErrors}</span>
-                </div>
+                  {/* Audio Frames Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <Volume2 size={18} /> Audio Frames
+                      {zoomDomain && activeZoomChart === 'chart3' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div 
+                      className="chart-container" ref={chartRefs.chart3}
+                      onMouseDown={handleMouseDown('chart3')}
+                      onMouseMove={handleMouseMove('chart3')}
+                      onMouseUp={handleMouseUp('chart3')}
+                      onMouseLeave={handleMouseLeave('chart3')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart3' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Legend />
+                          <Line type="monotone" dataKey="audio_frames_decoded" name="Decoded" 
+                            stroke="#82ca9d" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="audio_frames_dropped" name="Dropped" 
+                            stroke="#ff7300" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="audio_frames_failed" name="Failed" 
+                            stroke="#ff0000" strokeWidth={2} dot={false} />
+                          <SelectionOverlay chartId="chart3" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
+                  </div>
+                </>
               )}
             </>
           )}
