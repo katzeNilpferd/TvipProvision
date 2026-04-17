@@ -307,7 +307,7 @@ const DeviceConfig = () => {
           <button 
             onClick={() => setShowStatistics(true)} 
             className="btn btn-secondary"
-            title="View Network Statistics"
+            title="View Statistics"
           >
             <BarChart3 size={16} />
             Statistics
