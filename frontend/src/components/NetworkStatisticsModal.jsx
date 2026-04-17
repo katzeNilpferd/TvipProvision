@@ -915,25 +915,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             </button>
           </div>
 
-          {showRealtimeStatus && (
-            <div className={`realtime-status ${realtimeActive ? 'connected' : 'disconnected'}`}>
-              {realtimeActive ? (
-                <>
-                  <Wifi size={14} />
-                  <span>Real-time updates active (both Network and Media)</span>
-                  {lastUpdate && (
-                    <span className="last-update">Last update: {lastUpdate.toLocaleTimeString('ru-RU')}</span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <WifiOff size={14} />
-                  <span>Real-time disconnected - showing cached data</span>
-                </>
-              )}
-            </div>
-          )}
-
           {zoomDomain && (
             <div className="zoom-indicator">
               <span>Zoomed: {new Date(zoomDomain[0]).toLocaleString('ru-RU')} - {new Date(zoomDomain[1]).toLocaleString('ru-RU')}</span>
