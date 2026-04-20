@@ -31,19 +31,38 @@ class StatisticsWebSocket {
   connect(deviceId, onMessage, onConnectionChange, onUpdate) {
     if (!this.isRealtimeEnabled) return;
     
+    if (this.isConnected && this.deviceId === deviceId && this.ws?.readyState === WebSocket.OPEN) {
+      this.onMessageCallback = onMessage;
+      this.onConnectionChangeCallback = onConnectionChange;
+      this.onUpdateCallback = onUpdate;
+      console.log('WebSocket already connected to same device, callbacks updated');
+      return;
+    }
+
+    if (this.ws) {
+      this.ws.onclose = null; // Отключаем автоматический reconnect
+      this.ws.close();
+      this.ws = null;
+    }
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+
     this.deviceId = deviceId;
     this.onMessageCallback = onMessage;
     this.onConnectionChangeCallback = onConnectionChange;
     this.onUpdateCallback = onUpdate;
+    this.isConnected = false;
     
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = '127.0.0.1:5757';
-      
-      // Формируем URL с device_id как query параметр
-      const wsUrl = deviceId 
-        ? `${wsProtocol}//${wsHost}/api/ws/statistics?device_id=${deviceId}`
-        : `${wsProtocol}//${wsHost}/api/ws/statistics`;
+      const wsUrl = `${wsProtocol}//${wsHost}/api/ws/statistics?device_id=${deviceId}`;
       
       console.log('Connecting to WebSocket:', wsUrl);
       this.ws = new WebSocket(wsUrl);
@@ -55,11 +74,8 @@ class StatisticsWebSocket {
           this.onConnectionChangeCallback(true);
         }
         
-        // device_id уже передан в URL, отдельная подписка не нужна
-        // но если нужно подписаться на дополнительное устройство, можно вызвать subscribeToDevice
-        
         this.pingInterval = setInterval(() => {
-          if (this.ws.readyState === WebSocket.OPEN) {
+          if (this.ws?.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({ action: 'ping' }));
           }
         }, 30000);
@@ -67,16 +83,23 @@ class StatisticsWebSocket {
       
       this.ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
+          const message = JSON.parse(event.data);
           
-          if (data.type === 'statistics_update' && data.statistics) {
-            if (this.onMessageCallback) {
-              this.onMessageCallback(data.statistics);
-            }
-            if (this.onUpdateCallback) {
-              this.onUpdateCallback(new Date());
-            }
+          if ((message.type === 'network' || message.type === 'media') && message.data) {
+            if (this.onMessageCallback) this.onMessageCallback(message);
+            if (this.onUpdateCallback) this.onUpdateCallback(new Date());
+            return;
+          }
+          
+          if (message.type === 'statistics_update' && message.statistics) {
+            if (this.onMessageCallback) this.onMessageCallback(message.statistics);
+            if (this.onUpdateCallback) this.onUpdateCallback(new Date());
+            return;
+          }
+          
+          if (Array.isArray(message) || (message.stat && message.stat.received_bytes !== undefined)) {
+            if (this.onMessageCallback) this.onMessageCallback(message);
+            if (this.onUpdateCallback) this.onUpdateCallback(new Date());
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
