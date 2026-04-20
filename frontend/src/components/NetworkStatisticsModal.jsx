@@ -31,6 +31,15 @@ const MAX_DATA_POINTS = {
   '7d': 336
 };
 
+// Пороги временных разрывов (в миллисекундах), после которых линия должна разрываться
+const TIME_GAP_THRESHOLDS = {
+  '1h': 5 * 60 * 1000,      // 5 минут
+  '6h': 15 * 60 * 1000,     // 15 минут
+  '24h': 30 * 60 * 1000,    // 30 минут
+  '3d': 2 * 60 * 60 * 1000, // 2 часа
+  '7d': 6 * 60 * 60 * 1000  // 6 часов
+};
+
 // Диапазоны, для которых доступен real-time
 const REALTIME_ENABLED_RANGES = ['1h', '6h', '24h'];
 
@@ -104,6 +113,32 @@ const lttb = (data, threshold) => {
   return sampled.filter(point => point && point.timestamp !== undefined);
 };
 
+// Вставляет null-точки в данные при обнаружении временных разрывов, превышающих порог
+const insertGapsForTimeBreaks = (data, timeRange) => {
+  if (!data || data.length < 2) return data;
+  
+  const threshold = TIME_GAP_THRESHOLDS[timeRange] || 30 * 60 * 1000;
+  const result = [];
+  
+  for (let i = 0; i < data.length; i++) {
+    result.push(data[i]);
+    
+    if (i < data.length - 1) {
+      const currentTs = data[i].timestamp;
+      const nextTs = data[i + 1].timestamp;
+      const gap = nextTs - currentTs;
+      
+      if (gap > threshold) {
+        // Вставляем две null-точки для чёткого разрыва: после текущей и перед следующей
+        result.push({ timestamp: currentTs + 1, avg_bitrate: null });
+        result.push({ timestamp: nextTs - 1, avg_bitrate: null });
+      }
+    }
+  }
+  
+  return result;
+};
+
 const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   // Состояния
   const [statistics, setStatistics] = useState(null);
@@ -146,11 +181,22 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   const isRealtimeAvailable = REALTIME_ENABLED_RANGES.includes(timeRange);
 
   const chartData = useMemo(() => {
-    if (!zoomDomain) return rawChartData;
-    return rawChartData.filter(item => 
-      item.timestamp >= zoomDomain[0] && item.timestamp <= zoomDomain[1]
-    );
-  }, [rawChartData, zoomDomain]);
+    let data = rawChartData;
+    
+    // Применяем фильтрацию по zoom, если есть
+    if (zoomDomain) {
+      data = rawChartData.filter(item => 
+        item.timestamp >= zoomDomain[0] && item.timestamp <= zoomDomain[1]
+      );
+    }
+    
+    // Для медиа-статистики вставляем разрывы в битрейте
+    if (statisticsType === STATISTICS_TYPES.MEDIA && data.length > 0) {
+      data = insertGapsForTimeBreaks(data, timeRange);
+    }
+    
+    return data;
+  }, [rawChartData, zoomDomain, statisticsType, timeRange]);
 
   const aggregateDataForDisplay = useCallback((data, range) => {
     if (!data || data.length === 0) return [];
@@ -1118,11 +1164,15 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                             tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
                             angle={-45} textAnchor="end" height={60} scale="time" />
                           <YAxis tick={{ fontSize: 12 }} tickFormatter={formatBits} />
-                          <Tooltip formatter={(value) => formatBits(value)}
-                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Tooltip 
+                            formatter={(value) => value !== null ? formatBits(value) : ['No data', 'Bitrate']}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} 
+                          />
                           <Legend />
                           <Area type="monotone" dataKey="avg_bitrate" name="Bitrate" 
-                            fill="#8884d8" stroke="#8884d8" fillOpacity={0.3} />
+                            fill="#8884d8" stroke="#8884d8" fillOpacity={0.3}
+                            connectNulls={false}
+                            isAnimationActive={false} />
                           <SelectionOverlay chartId="chart1" />
                         </ComposedChart>
                       </ResponsiveContainer>
