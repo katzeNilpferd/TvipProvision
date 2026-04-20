@@ -136,6 +136,12 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     chart3: useRef(null)
   };
 
+  // Ref для буферизации WebSocket-данных, пришедших до загрузки истории
+  const wsBufferRef = useRef({ network: [], media: [] });
+  
+  // Флаг: загружены ли исторические данные с бэка
+  const isHistoricalDataLoadedRef = useRef(false);
+
   // Проверяем, доступен ли real-time для текущего диапазона
   const isRealtimeAvailable = REALTIME_ENABLED_RANGES.includes(timeRange);
 
@@ -153,48 +159,39 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return lttb(data, maxPoints);
   }, []);
 
-  // Обработка WebSocket сообщений (поддерживает оба типа статистики)
+  // Обработка WebSocket сообщений
   const handleWebSocketMessage = useCallback((message) => {
-    console.log('Received WebSocket message:', message);
-    
-    // WebSocket может присылать разные форматы:
-    // 1. Прямо объект {type: "network"|"media",  {...}}
-    // 2. Объект с полем type и data внутри
-    // 3. Массив статистики (для обратной совместимости)
-    
     let messageType = null;
     let messageData = null;
     
     if (message.type && (message.type === 'network' || message.type === 'media') && message.data) {
-      // Формат: {type: "network",  {type: "network", timestamp: ..., stat: {...}}}
       messageType = message.type;
       messageData = message.data;
     } else if (message.type && (message.type === 'network' || message.type === 'media') && message.stat) {
-      // Плоский формат: {type: "network", timestamp: ..., stat: {...}}
       messageType = message.type;
       messageData = [message];
     } else if (Array.isArray(message)) {
-      // Старый формат - массив network статистики
       messageType = 'network';
       messageData = message;
     } else if (message.stat && message.stat.received_bytes !== undefined) {
-      // Одиночная network статистика
       messageType = 'network';
       messageData = [message];
     } else if (message.avg_bitrate !== undefined) {
-      // Одиночная media статистика
       messageType = 'media';
       messageData = [message];
     }
     
     if (!messageType || !messageData) {
-      console.warn('Unknown WebSocket message format:', message);
       return;
     }
     
-    console.log(`Processing ${messageType} statistics from WebSocket`);
+    // Если исторические данные ещё не загружены — буферизуем
+    if (!isHistoricalDataLoadedRef.current) {
+      wsBufferRef.current[messageType] = [...wsBufferRef.current[messageType], ...messageData];
+      return;
+    }
     
-    // Обновляем данные в зависимости от типа
+    // Иначе обрабатываем как обычно
     if (messageType === 'network') {
       updateNetworkData(messageData);
     } else if (messageType === 'media') {
@@ -205,7 +202,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   }, [timeRange, aggregateDataForDisplay]);
 
   // Обновление сетевых данных
-  // Внутри updateNetworkData (аналогично для updateMediaData)
   const updateNetworkData = useCallback((newData) => {
     setRawChartData(prevData => {
       if (statisticsType !== STATISTICS_TYPES.NETWORK) {
@@ -217,14 +213,13 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       const newPoints = [];
       const statsArray = Array.isArray(newData) ? newData : [newData];
       const now = Date.now();
-      const maxTimestampDrift = 5000; // допускаем отклонение до 5 секунд
+      const maxTimestampDrift = 5000;
       
       statsArray.forEach(stat => {
         const statData = stat.stat || stat;
         const timestamp = stat.timestamp * 1000;
         
         if (timestamp > now + maxTimestampDrift || timestamp < now - 24 * 60 * 60 * 1000) {
-          console.warn(`⚠️ Skipping point with suspicious timestamp: ${timestamp}`);
           return;
         }
         
@@ -242,7 +237,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         
         if (prevPoint) {
           const timeDiff = stat.timestamp - Math.floor(prevPoint.timestamp / 1000);
-          if (timeDiff > 0 && timeDiff < 300) { // игнорируем скачки >5 минут
+          if (timeDiff > 0 && timeDiff < 300) {
             receivedBytesDelta = Math.max(0, statData.received_bytes - prevPoint.receivedBytes);
             sentBytesDelta = Math.max(0, statData.sent_bytes - prevPoint.sentBytes);
             receivedPacketsDelta = Math.max(0, statData.received_total_packets - prevPoint.receivedPackets);
@@ -291,7 +286,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         filteredData = [combinedData[combinedData.length - 1]];
       }
       
-      // Обновляем device info
       if (newPoints.length > 0) {
         const lastPoint = newPoints[newPoints.length - 1];
         setStatistics(prev => {
@@ -314,7 +308,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   // Обновление медиа данных
   const updateMediaData = useCallback((newData) => {
     setRawChartData(prevData => {
-      // Если текущий тип не media, сохраняем данные для последующего использования
       if (statisticsType !== STATISTICS_TYPES.MEDIA) {
         setPendingWsData(prev => ({ ...prev, media: newData }));
         return prevData;
@@ -391,6 +384,21 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       return aggregateDataForDisplay(filteredData, timeRange);
     });
   }, [timeRange, aggregateDataForDisplay, statisticsType]);
+
+  // Слияние буферизованных WebSocket-данных с историческими
+  const mergeBufferedWsData = useCallback((type) => {
+    const buffer = wsBufferRef.current[type];
+    if (!buffer || buffer.length === 0) return;
+    
+    if (type === 'network') {
+      updateNetworkData(buffer);
+    } else if (type === 'media') {
+      updateMediaData(buffer);
+    }
+    
+    // Очищаем буфер после слияния
+    wsBufferRef.current[type] = [];
+  }, [updateNetworkData, updateMediaData]);
 
   const handleConnectionChange = useCallback((connected) => {
     setIsRealtimeConnected(connected);
@@ -482,14 +490,12 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         data = await loadMediaStatistics();
       }
 
-      console.log('Received statistics:', data);
       setStatistics(data);
       
       if (data.device && data.device.id) {
         setDeviceId(data.device.id);
       }
       
-      // Обрабатываем данные в зависимости от типа
       const processed = [];
       const stats = data.statistics;
       
@@ -610,22 +616,27 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       const aggregated = aggregateDataForDisplay(processed, timeRange);
       setRawChartData(aggregated);
       
+      // Помечаем, что исторические данные загружены
+      isHistoricalDataLoadedRef.current = true;
+      
+      // Сливаем буферизованные WebSocket-данные
+      mergeBufferedWsData(statisticsType);
+      
     } catch (err) {
       console.error('Failed to load statistics:', err);
       setError(err.response?.data?.detail || err.message || 'Failed to load statistics');
     } finally {
       setLoading(false);
     }
-  }, [macAddress, timeRange, statisticsType, loadNetworkStatistics, loadMediaStatistics, aggregateDataForDisplay]);
+  }, [macAddress, timeRange, statisticsType, loadNetworkStatistics, loadMediaStatistics, aggregateDataForDisplay, mergeBufferedWsData]);
 
   // Ref для отслеживания актуального состояния isOpen внутри cleanup
   const isOpenRef = useRef(isOpen);
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
 
-  // WebSocket эффект - подключаемся всегда, независимо от типа статистики
+  // WebSocket эффект
   useEffect(() => {
     if (isOpen && deviceId && isRealtimeAvailable) {
-      console.log('Enabling real-time for device:', deviceId);
       statisticsWebSocket.enableRealtime(
         deviceId,
         handleWebSocketMessage,
@@ -648,7 +659,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   // При переключении типа статистики проверяем pending данные
   useEffect(() => {
     if (pendingWsData[statisticsType] && pendingWsData[statisticsType].length > 0) {
-      console.log(`Applying pending ${statisticsType} data from WebSocket`);
       if (statisticsType === STATISTICS_TYPES.NETWORK) {
         updateNetworkData(pendingWsData.network);
       } else {
@@ -661,9 +671,19 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   // Загрузка данных при изменении параметров
   useEffect(() => {
     if (isOpen && macAddress) {
+      // Сбрасываем флаг при новой загрузке
+      isHistoricalDataLoadedRef.current = false;
       loadStatistics();
     }
   }, [isOpen, macAddress, timeRange, statisticsType, loadStatistics]);
+
+  // Очистка буфера при закрытии модалки
+  useEffect(() => {
+    if (!isOpen) {
+      wsBufferRef.current = { network: [], media: [] };
+      isHistoricalDataLoadedRef.current = false;
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -860,7 +880,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   const isNetworkStats = statisticsType === STATISTICS_TYPES.NETWORK;
   const isMediaStats = statisticsType === STATISTICS_TYPES.MEDIA;
 
-  // Определяем статус подключения для отображения
   const showRealtimeStatus = isRealtimeAvailable;
   const realtimeActive = isRealtimeConnected;
 
@@ -873,7 +892,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             {isNetworkStats ? 'Network' : 'Media'} Statistics - {macAddress}
           </h2>
           <div className="modal-header-controls">
-            {/* Переключатель Network/Media */}
             <div className="statistics-type-selector">
               <button 
                 className={isNetworkStats ? 'active' : ''} 
@@ -957,10 +975,8 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
 
           {!loading && !error && chartData.length > 0 && (
             <>
-              {/* Network Stats Charts */}
               {isNetworkStats && (
                 <>
-                  {/* Traffic Rate Chart */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <TrendingUp size={18} /> Traffic Rate (bits per second)
@@ -1003,7 +1019,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* Packets Chart */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Activity size={18} /> Packets per Interval
@@ -1041,7 +1056,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* Errors Chart */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <AlertTriangle size={18} /> Errors per Interval
@@ -1081,10 +1095,8 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                 </>
               )}
 
-              {/* Media Stats Charts */}
               {isMediaStats && (
                 <>
-                  {/* Bitrate Chart */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Radio size={18} /> Average Bitrate (bps)
@@ -1118,7 +1130,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* Video Frames Chart */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Video size={18} /> Video Frames
@@ -1155,7 +1166,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* Audio Frames Chart */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Volume2 size={18} /> Audio Frames
