@@ -286,6 +286,9 @@ const DeviceConfig = () => {
     return acc
   }, {})
 
+  // Определяем, доступна ли кнопка статистики
+  const isStatisticsAvailable = !authEnabled || isAuthenticated;
+
   return (
     <div className="page device-config-page">
       {/* Шапка */}
@@ -305,9 +308,10 @@ const DeviceConfig = () => {
         
         <div className="actions">
           <button 
-            onClick={() => setShowStatistics(true)} 
+            onClick={() => isStatisticsAvailable && setShowStatistics(true)} 
             className="btn btn-secondary"
-            title="View Statistics"
+            disabled={!isStatisticsAvailable}
+            title={!isStatisticsAvailable ? "Please log in to view statistics" : "View Statistics"}
           >
             <BarChart3 size={16} />
             Statistics
