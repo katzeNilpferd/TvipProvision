@@ -42,45 +42,46 @@ const STATISTICS_TYPES = {
 
 // Алгоритм LTTB для децимации
 const lttb = (data, threshold) => {
+  if (!data || !Array.isArray(data)) return [];
   const dataLength = data.length;
-  if (threshold >= dataLength || threshold === 0) {
-    return data;
-  }
 
+  if (threshold >= dataLength || threshold <= 0 || dataLength === 0) {
+    return [...data];
+  }
+  if (dataLength <= 3) return [...data];
+  
   const sampled = [];
   let sampledIndex = 0;
-  
   const bucketSize = (dataLength - 2) / (threshold - 2);
   
   let a = 0;
-  const maxAreaPoint = { index: 0, area: -1 };
-  
   sampled[sampledIndex++] = data[a];
   
   for (let i = 0; i < threshold - 2; i++) {
-    let avgX = 0;
-    let avgY = 0;
+    let avgX = 0, avgY = 0;
     let avgRangeStart = Math.floor((i + 1) * bucketSize) + 1;
     let avgRangeEnd = Math.floor((i + 2) * bucketSize) + 1;
-    avgRangeEnd = avgRangeEnd < dataLength ? avgRangeEnd : dataLength;
+    avgRangeEnd = Math.min(avgRangeEnd, dataLength);
     
-    const avgRangeLength = avgRangeEnd - avgRangeStart;
+    const avgRangeLength = Math.max(1, avgRangeEnd - avgRangeStart);
     
     for (let j = avgRangeStart; j < avgRangeEnd; j++) {
       avgX += data[j].timestamp;
-      // Для медиа-статистики используем avg_bitrate, для сетевой - сумму rates
       avgY += data[j].avg_bitrate || (data[j].receivedRate + data[j].sentRate) || 0;
     }
     avgX /= avgRangeLength;
     avgY /= avgRangeLength;
     
     const rangeOffs = Math.floor(i * bucketSize) + 1;
-    const rangeTo = Math.floor((i + 1) * bucketSize) + 1;
+    const rangeTo = Math.min(Math.floor((i + 1) * bucketSize) + 1, dataLength - 1);
+    
+    if (rangeOffs >= rangeTo) continue;
     
     const pointA = data[a];
     const pointAValue = pointA.avg_bitrate || (pointA.receivedRate + pointA.sentRate) || 0;
     
-    maxAreaPoint.area = -1;
+    let maxArea = -1;
+    let maxAreaIndex = rangeOffs;
     
     for (let j = rangeOffs; j < rangeTo; j++) {
       const dataValue = data[j].avg_bitrate || (data[j].receivedRate + data[j].sentRate) || 0;
@@ -89,19 +90,18 @@ const lttb = (data, threshold) => {
         (pointA.timestamp - data[j].timestamp) * (avgY - pointAValue)
       ) * 0.5;
       
-      if (area > maxAreaPoint.area) {
-        maxAreaPoint.area = area;
-        maxAreaPoint.index = j;
+      if (area > maxArea) {
+        maxArea = area;
+        maxAreaIndex = j;
       }
     }
     
-    sampled[sampledIndex++] = data[maxAreaPoint.index];
-    a = maxAreaPoint.index;
+    sampled[sampledIndex++] = data[maxAreaIndex];
+    a = maxAreaIndex;
   }
-  
   sampled[sampledIndex++] = data[dataLength - 1];
   
-  return sampled;
+  return sampled.filter(point => point && point.timestamp !== undefined);
 };
 
 const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
@@ -158,17 +158,21 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     console.log('Received WebSocket message:', message);
     
     // WebSocket может присылать разные форматы:
-    // 1. Прямо объект WebSocketStatsMessage
-    // 2. Объект с полем type и data
+    // 1. Прямо объект {type: "network"|"media",  {...}}
+    // 2. Объект с полем type и data внутри
     // 3. Массив статистики (для обратной совместимости)
     
     let messageType = null;
     let messageData = null;
     
-    if (message.type && (message.type === 'network' || message.type === 'media')) {
-      // Формат WebSocketStatsMessage
+    if (message.type && (message.type === 'network' || message.type === 'media') && message.data) {
+      // Формат: {type: "network",  {type: "network", timestamp: ..., stat: {...}}}
       messageType = message.type;
       messageData = message.data;
+    } else if (message.type && (message.type === 'network' || message.type === 'media') && message.stat) {
+      // Плоский формат: {type: "network", timestamp: ..., stat: {...}}
+      messageType = message.type;
+      messageData = [message];
     } else if (Array.isArray(message)) {
       // Старый формат - массив network статистики
       messageType = 'network';
@@ -201,31 +205,35 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   }, [timeRange, aggregateDataForDisplay]);
 
   // Обновление сетевых данных
+  // Внутри updateNetworkData (аналогично для updateMediaData)
   const updateNetworkData = useCallback((newData) => {
     setRawChartData(prevData => {
-      // Если текущий тип не network, сохраняем данные для последующего использования
       if (statisticsType !== STATISTICS_TYPES.NETWORK) {
         setPendingWsData(prev => ({ ...prev, network: newData }));
         return prevData;
       }
       
-      if (!prevData || prevData.length === 0) return prevData;
-      
+      const baseData = prevData && prevData.length > 0 ? [...prevData] : [];
       const newPoints = [];
       const statsArray = Array.isArray(newData) ? newData : [newData];
+      const now = Date.now();
+      const maxTimestampDrift = 5000; // допускаем отклонение до 5 секунд
       
       statsArray.forEach(stat => {
+        const statData = stat.stat || stat;
         const timestamp = stat.timestamp * 1000;
-        const date = new Date(timestamp);
         
-        let timeLabel;
-        if (timeRange === '24h') {
-          timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        } else {
-          timeLabel = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (timestamp > now + maxTimestampDrift || timestamp < now - 24 * 60 * 60 * 1000) {
+          console.warn(`⚠️ Skipping point with suspicious timestamp: ${timestamp}`);
+          return;
         }
         
-        const prevPoint = prevData.length > 0 ? prevData[prevData.length - 1] : null;
+        const date = new Date(timestamp);
+        let timeLabel = timeRange === '24h' 
+          ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+          : date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        const prevPoint = baseData.length > 0 ? baseData[baseData.length - 1] : null;
         
         let receivedRate = 0, sentRate = 0;
         let receivedBytesDelta = 0, sentBytesDelta = 0;
@@ -234,15 +242,15 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         
         if (prevPoint) {
           const timeDiff = stat.timestamp - Math.floor(prevPoint.timestamp / 1000);
-          if (timeDiff > 0) {
-            receivedBytesDelta = Math.max(0, stat.stat.received_bytes - prevPoint.receivedBytes);
-            sentBytesDelta = Math.max(0, stat.stat.sent_bytes - prevPoint.sentBytes);
-            receivedPacketsDelta = Math.max(0, stat.stat.received_total_packets - prevPoint.receivedPackets);
-            sentPacketsDelta = Math.max(0, stat.stat.sent_total_packets - prevPoint.sentPackets);
+          if (timeDiff > 0 && timeDiff < 300) { // игнорируем скачки >5 минут
+            receivedBytesDelta = Math.max(0, statData.received_bytes - prevPoint.receivedBytes);
+            sentBytesDelta = Math.max(0, statData.sent_bytes - prevPoint.sentBytes);
+            receivedPacketsDelta = Math.max(0, statData.received_total_packets - prevPoint.receivedPackets);
+            sentPacketsDelta = Math.max(0, statData.sent_total_packets - prevPoint.sentPackets);
             
-            const currentReceivedErrors = stat.stat.received_error_packets || 0;
+            const currentReceivedErrors = statData.received_error_packets || 0;
             const prevReceivedErrors = prevPoint.receivedErrors || 0;
-            const currentSentErrors = stat.stat.sent_error_packets || 0;
+            const currentSentErrors = statData.sent_error_packets || 0;
             const prevSentErrors = prevPoint.sentErrors || 0;
             
             receivedErrorsDelta = Math.max(0, currentReceivedErrors - prevReceivedErrors);
@@ -254,35 +262,36 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         }
         
         newPoints.push({
-          timestamp, time: timeLabel,
-          fullTime: date.toLocaleString('ru-RU'),
-          receivedBytes: stat.stat.received_bytes,
-          sentBytes: stat.stat.sent_bytes,
-          receivedPackets: stat.stat.received_total_packets,
-          sentPackets: stat.stat.sent_total_packets,
-          receivedErrors: stat.stat.received_error_packets || 0,
-          sentErrors: stat.stat.sent_error_packets || 0,
-          receivedErrorsDelta, sentErrorsDelta,
-          receivedRate, sentRate,
+          timestamp, time: timeLabel, fullTime: date.toLocaleString('ru-RU'),
+          receivedBytes: statData.received_bytes, sentBytes: statData.sent_bytes,
+          receivedPackets: statData.received_total_packets, sentPackets: statData.sent_total_packets,
+          receivedErrors: statData.received_error_packets || 0, sentErrors: statData.sent_error_packets || 0,
+          receivedErrorsDelta, sentErrorsDelta, receivedRate, sentRate,
           receivedPacketsDelta, sentPacketsDelta,
           speed: stat.speed, duplex: stat.duplex, ip: stat.ip
         });
       });
       
-      const combinedData = [...prevData, ...newPoints];
+      if (newPoints.length === 0) return prevData;
       
-      const now = new Date();
+      const combinedData = [...baseData, ...newPoints];
+      
+      const nowDate = new Date();
       let cutoffTime;
       switch (timeRange) {
-        case '1h': cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); break;
-        case '6h': cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
-        case '24h': cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+        case '1h': cutoffTime = new Date(nowDate.getTime() - 60 * 60 * 1000); break;
+        case '6h': cutoffTime = new Date(nowDate.getTime() - 6 * 60 * 60 * 1000); break;
+        case '24h': cutoffTime = new Date(nowDate.getTime() - 24 * 60 * 60 * 1000); break;
         default: return combinedData;
       }
       
-      const filteredData = combinedData.filter(point => point.timestamp >= cutoffTime.getTime());
+      let filteredData = combinedData.filter(point => point.timestamp >= cutoffTime.getTime());
       
-      // Обновляем device info если есть новые данные
+      if (filteredData.length === 0 && combinedData.length > 0) {
+        filteredData = [combinedData[combinedData.length - 1]];
+      }
+      
+      // Обновляем device info
       if (newPoints.length > 0) {
         const lastPoint = newPoints[newPoints.length - 1];
         setStatistics(prev => {
@@ -311,7 +320,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         return prevData;
       }
       
-      if (!prevData || prevData.length === 0) return prevData;
+      const baseData = prevData && prevData.length > 0 ? [...prevData] : [];
       
       const newPoints = [];
       const statsArray = Array.isArray(newData) ? newData : [newData];
@@ -339,7 +348,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             displayUrl = displayUrl.substring(0, 37) + '...';
           }
         } catch (e) {
-          if (displayUrl.length > 40) {
+          if (displayUrl && displayUrl.length > 40) {
             displayUrl = displayUrl.substring(0, 37) + '...';
           }
         }
@@ -367,7 +376,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         });
       });
       
-      const combinedData = [...prevData, ...newPoints];
+      const combinedData = [...baseData, ...newPoints];
       
       const now = new Date();
       let cutoffTime;
@@ -486,7 +495,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       
       if (stats && stats.length > 0) {
         if (statisticsType === STATISTICS_TYPES.NETWORK) {
-          // Обработка сетевой статистики (код без изменений)
           stats.forEach((stat, index) => {
             const timestamp = stat.timestamp * 1000;
             const date = new Date(timestamp);
@@ -546,7 +554,6 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             });
           });
         } else {
-          // Обработка медиа-статистики (код без изменений)
           stats.forEach((stat) => {
             const timestamp = stat.timestamp * 1000;
             const date = new Date(timestamp);
@@ -611,6 +618,10 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     }
   }, [macAddress, timeRange, statisticsType, loadNetworkStatistics, loadMediaStatistics, aggregateDataForDisplay]);
 
+  // Ref для отслеживания актуального состояния isOpen внутри cleanup
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
   // WebSocket эффект - подключаемся всегда, независимо от типа статистики
   useEffect(() => {
     if (isOpen && deviceId && isRealtimeAvailable) {
@@ -621,13 +632,13 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
         handleConnectionChange,
         handleUpdate
       );
-    } else if (!isRealtimeAvailable || !deviceId) {
+    } else {
       statisticsWebSocket.disableRealtime();
       setIsRealtimeConnected(false);
     }
     
     return () => {
-      if (!isOpen || !isRealtimeAvailable) {
+      if (!isOpenRef.current || !isRealtimeAvailable) {
         statisticsWebSocket.disableRealtime();
         setIsRealtimeConnected(false);
       }
