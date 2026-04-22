@@ -8,6 +8,8 @@
  * - Callback'и для получения данных и статуса подключения
  */
 
+const API_STATS_URL = import.meta.env.VITE_API_STATS_URL || 'http://127.0.0.1:5757'
+
 class StatisticsWebSocket {
   constructor() {
     this.ws = null;
@@ -61,7 +63,7 @@ class StatisticsWebSocket {
     
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = '127.0.0.1:5757';
+      const wsHost = API_STATS_URL.replace(/^https?:\/\//, '');
       const wsUrl = `${wsProtocol}//${wsHost}/api/ws/statistics?device_id=${deviceId}`;
       
       console.log('Connecting to WebSocket:', wsUrl);
