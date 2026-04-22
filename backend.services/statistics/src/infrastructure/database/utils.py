@@ -8,7 +8,7 @@ DATABASE_URL = settings.DATABASE_URL
 
 async def ensure_db():
     conn = await asyncpg.connect(
-        DATABASE_URL.replace('postgresql+asyncpg://', 'postgresql://'),
+        'postgresql://postgres:postgres@postgres:5432/postgres',
     )
 
     exists = await conn.fetchval(
