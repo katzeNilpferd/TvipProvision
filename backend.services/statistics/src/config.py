@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     SERVICE_PORT: int = 8000
     
     # Database
-    DB_HOST: str = "localhost"
+    DB_HOST: str = "postgres"
     DB_PORT: int = 5432
     DB_NAME: str = "tvip_statistics"
     DB_USER: str = "postgres"
