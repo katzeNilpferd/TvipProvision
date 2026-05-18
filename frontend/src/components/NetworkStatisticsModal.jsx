@@ -469,13 +469,18 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     }
 
     const formatDateTime = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      const tzOffset = -date.getTimezoneOffset();
+      const diff = tzOffset >= 0 ? '+' : '-';
+      const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+      
+      return date.getFullYear() +
+        '-' + pad(date.getMonth() + 1) +
+        '-' + pad(date.getDate()) +
+        'T' + pad(date.getHours()) +
+        ':' + pad(date.getMinutes()) +
+        ':' + pad(date.getSeconds()) +
+        diff + pad(tzOffset / 60) +
+        ':' + pad(tzOffset % 60);
     };
 
     const data = await getNetworkStatistics({
@@ -503,13 +508,18 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     }
 
     const formatDateTime = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      const tzOffset = -date.getTimezoneOffset();
+      const diff = tzOffset >= 0 ? '+' : '-';
+      const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+      
+      return date.getFullYear() +
+        '-' + pad(date.getMonth() + 1) +
+        '-' + pad(date.getDate()) +
+        'T' + pad(date.getHours()) +
+        ':' + pad(date.getMinutes()) +
+        ':' + pad(date.getSeconds()) +
+        diff + pad(tzOffset / 60) +
+        ':' + pad(tzOffset % 60);
     };
 
     const data = await getMediaStatistics({
