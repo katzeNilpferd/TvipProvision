@@ -248,14 +248,14 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   }, [timeRange, aggregateDataForDisplay]);
 
   // Обновление сетевых данных
-  const updateNetworkData = useCallback((newData) => {
+  const updateNetworkData = useCallback((newData, overrideBase) => {
     setRawChartData(prevData => {
       if (statisticsType !== STATISTICS_TYPES.NETWORK) {
         setPendingWsData(prev => ({ ...prev, network: newData }));
         return prevData;
       }
       
-      const baseData = prevData && prevData.length > 0 ? [...prevData] : [];
+      const baseData = overrideBase ?? (prevData && prevData.length > 0 ? [...prevData] : []);
       const newPoints = [];
       const statsArray = Array.isArray(newData) ? newData : [newData];
       const now = Date.now();
@@ -352,15 +352,14 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   }, [timeRange, aggregateDataForDisplay, statisticsType]);
 
   // Обновление медиа данных
-  const updateMediaData = useCallback((newData) => {
+  const updateMediaData = useCallback((newData, overrideBase) => {
     setRawChartData(prevData => {
       if (statisticsType !== STATISTICS_TYPES.MEDIA) {
         setPendingWsData(prev => ({ ...prev, media: newData }));
         return prevData;
       }
       
-      const baseData = prevData && prevData.length > 0 ? [...prevData] : [];
-      
+      const baseData = overrideBase ?? (prevData && prevData.length > 0 ? [...prevData] : []);
       const newPoints = [];
       const statsArray = Array.isArray(newData) ? newData : [newData];
       
@@ -432,17 +431,16 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   }, [timeRange, aggregateDataForDisplay, statisticsType]);
 
   // Слияние буферизованных WebSocket-данных с историческими
-  const mergeBufferedWsData = useCallback((type) => {
+  const mergeBufferedWsData = useCallback((type, baseData) => {
     const buffer = wsBufferRef.current[type];
     if (!buffer || buffer.length === 0) return;
     
     if (type === 'network') {
-      updateNetworkData(buffer);
+      updateNetworkData(buffer, baseData);
     } else if (type === 'media') {
-      updateMediaData(buffer);
+      updateMediaData(buffer, baseData);
     }
     
-    // Очищаем буфер после слияния
     wsBufferRef.current[type] = [];
   }, [updateNetworkData, updateMediaData]);
 
@@ -676,7 +674,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       isHistoricalDataLoadedRef.current = true;
       
       // Сливаем буферизованные WebSocket-данные
-      mergeBufferedWsData(statisticsType);
+      mergeBufferedWsData(statisticsType, aggregated);
       
     } catch (err) {
       console.error('Failed to load statistics:', err);
