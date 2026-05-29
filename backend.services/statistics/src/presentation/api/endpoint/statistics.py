@@ -1,10 +1,11 @@
 from fastapi import (
-    APIRouter, Request, Header, Depends, WebSocket, Query
+    APIRouter, Request, Header, Depends, WebSocket, Query, HTTPException
 )
 from datetime import datetime
 from typing import Annotated, Optional
 
 from domain.value_objects.sort_time import SortTime
+from domain.exceptions import StatisticsNotFoundException
 from application.dto import StatisticReportDTO
 from application.use_cases.receive_statistics import ReceiveStatisticsUseCase
 from application.use_cases.get_network_statistics import GetNetworkStatisticsUseCase
@@ -50,14 +51,19 @@ async def get_network_statistics(
     offset: Optional[int] = None,
     use_case: GetNetworkStatisticsUseCase = Depends(get_network_statistics_use_case)
 ):
-    return await use_case.execute(
-        mac_address=mac_address,
-        start_time=start_time,
-        end_time=end_time,
-        sort_by_timestamp=sort_by_timestamp,
-        limit=limit,
-        offset=offset
-    )
+    try:
+        return await use_case.execute(
+            mac_address=mac_address,
+            start_time=start_time,
+            end_time=end_time,
+            sort_by_timestamp=sort_by_timestamp,
+            limit=limit,
+            offset=offset
+        )
+    except StatisticsNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get('/statistics/media')
@@ -70,14 +76,19 @@ async def get_media_statistics(
     offset: Optional[int] = None,
     use_case: GetMediaStatisticsUseCase = Depends(get_media_statistics_use_case)
 ):
-    return await use_case.execute(
-        mac_address=mac_address,
-        start_time=start_time,
-        end_time=end_time,
-        sort_by_timestamp=sort_by_timestamp,
-        limit=limit,
-        offset=offset
-    )
+    try:
+        return await use_case.execute(
+            mac_address=mac_address,
+            start_time=start_time,
+            end_time=end_time,
+            sort_by_timestamp=sort_by_timestamp,
+            limit=limit,
+            offset=offset
+        )
+    except StatisticsNotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.websocket('/ws/statistics')

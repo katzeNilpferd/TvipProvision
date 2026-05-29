@@ -5,6 +5,7 @@ from domain.value_objects.sort_time import SortTime
 from domain.value_objects.mac_address import MacAddress
 from domain.repositories.device_repository import DeviceRepository
 from domain.repositories.statistic_repository import StatisticRepository
+from domain.exceptions import StatisticsNotFoundException
 from application.dto import MediaStatisticDTO
 
 
@@ -31,7 +32,7 @@ class GetMediaStatisticsUseCase:
         mac_address_obj = MacAddress(mac_address)
         device = await self.device_repository.get_by_mac(mac_address_obj)
         if not device:
-            raise ValueError(f"Device with MAC {mac_address} not found")
+            raise StatisticsNotFoundException(f"Device with MAC {mac_address} not found")
         
         media_stats = await self.statistic_repository.get_media_by_device(
             device=device,
