@@ -33,11 +33,11 @@ const MAX_DATA_POINTS = {
 
 // Пороги временных разрывов (в миллисекундах), после которых линия должна разрываться
 const TIME_GAP_THRESHOLDS = {
-  '1h': 5 * 60 * 1000,      // 5 минут
-  '6h': 15 * 60 * 1000,     // 15 минут
-  '24h': 30 * 60 * 1000,    // 30 минут
-  '3d': 2 * 60 * 60 * 1000, // 2 часа
-  '7d': 6 * 60 * 60 * 1000  // 6 часов
+  '1h': 5 * 60 * 1000,      // 5 minutes
+  '6h': 15 * 60 * 1000,     // 15 minutes
+  '24h': 30 * 60 * 1000,    // 30 minutes
+  '3d': 2 * 60 * 60 * 1000, // 2 hours
+  '7d': 6 * 60 * 60 * 1000  // 6 hours
 };
 
 // Диапазоны, для которых доступен real-time
@@ -129,7 +129,7 @@ const insertGapsForTimeBreaks = (data, timeRange) => {
       const gap = nextTs - currentTs;
       
       if (gap > threshold) {
-        // Вставляем две null-точки для чёткого разрыва: после текущей и перед следующей
+        // Insert two null points for a clear break: after current and before next
         result.push({ timestamp: currentTs + 1, avg_bitrate: null });
         result.push({ timestamp: nextTs - 1, avg_bitrate: null });
       }
@@ -140,7 +140,7 @@ const insertGapsForTimeBreaks = (data, timeRange) => {
 };
 
 const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
-  // Состояния
+  // States
   const [statistics, setStatistics] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -160,7 +160,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     chart4: null
   });
   
-  // WebSocket состояния
+  // WebSocket states
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [pendingWsData, setPendingWsData] = useState({ network: [], media: [] });
@@ -173,26 +173,26 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     chart4: useRef(null)
   };
 
-  // Ref для буферизации WebSocket-данных, пришедших до загрузки истории
+  // Ref for buffering WebSocket data that arrives before history loads
   const wsBufferRef = useRef({ network: [], media: [] });
   
-  // Флаг: загружены ли исторические данные с бэка
+  // Flag: whether historical data from backend has been loaded
   const isHistoricalDataLoadedRef = useRef(false);
 
-  // Проверяем, доступен ли real-time для текущего диапазона
+  // Check if real-time is available for current range
   const isRealtimeAvailable = REALTIME_ENABLED_RANGES.includes(timeRange);
 
   const chartData = useMemo(() => {
     let data = rawChartData;
     
-    // Применяем фильтрацию по zoom, если есть
+    // Apply zoom filter if present
     if (zoomDomain) {
       data = rawChartData.filter(item => 
         item.timestamp >= zoomDomain[0] && item.timestamp <= zoomDomain[1]
       );
     }
     
-    // Для медиа-статистики вставляем разрывы в битрейте
+    // For media statistics, insert breaks in bitrate
     if (statisticsType === STATISTICS_TYPES.MEDIA && data.length > 0) {
       data = insertGapsForTimeBreaks(data, timeRange);
     }
@@ -207,7 +207,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return lttb(data, maxPoints);
   }, []);
 
-  // Обработка WebSocket сообщений
+  // Handle WebSocket messages
   const handleWebSocketMessage = useCallback((message) => {
     let messageType = null;
     let messageData = null;
@@ -233,13 +233,13 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       return;
     }
     
-    // Если исторические данные ещё не загружены — буферизуем
+    // If historical data hasn't been loaded yet, buffer it
     if (!isHistoricalDataLoadedRef.current) {
       wsBufferRef.current[messageType] = [...wsBufferRef.current[messageType], ...messageData];
       return;
     }
     
-    // Иначе обрабатываем как обычно
+    // Otherwise process as usual
     if (messageType === 'network') {
       updateNetworkData(messageData);
     } else if (messageType === 'media') {
@@ -249,7 +249,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     setLastUpdate(new Date());
   }, [timeRange, aggregateDataForDisplay]);
 
-  // Обновление сетевых данных
+  // Update network data
   const updateNetworkData = useCallback((newData, overrideBase) => {
     setRawChartData(prevData => {
       if (statisticsType !== STATISTICS_TYPES.NETWORK) {
@@ -353,7 +353,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     });
   }, [timeRange, aggregateDataForDisplay, statisticsType]);
 
-  // Обновление медиа данных
+  // Update media data
   const updateMediaData = useCallback((newData, overrideBase) => {
     setRawChartData(prevData => {
       if (statisticsType !== STATISTICS_TYPES.MEDIA) {
@@ -432,7 +432,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     });
   }, [timeRange, aggregateDataForDisplay, statisticsType]);
 
-  // Слияние буферизованных WebSocket-данных с историческими
+  // Merge buffered WebSocket data with historical data
   const mergeBufferedWsData = useCallback((type, baseData) => {
     const buffer = wsBufferRef.current[type];
     if (!buffer || buffer.length === 0) return;
@@ -454,7 +454,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     setLastUpdate(date);
   }, []);
 
-  // Загрузка сетевой статистики
+  // Load network statistics
   const loadNetworkStatistics = useCallback(async () => {
     const now = new Date();
     let startTime;
@@ -493,7 +493,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return data;
   }, [macAddress, timeRange]);
 
-  // Загрузка медиа-статистики
+  // Load media statistics
   const loadMediaStatistics = useCallback(async () => {
     const now = new Date();
     let startTime;
@@ -532,7 +532,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     return data;
   }, [macAddress, timeRange]);
 
-  // Основная функция загрузки
+  // Main load function
   const loadStatistics = useCallback(async () => {
     try {
       setLoading(true);
@@ -672,10 +672,10 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
       const aggregated = aggregateDataForDisplay(processed, timeRange);
       setRawChartData(aggregated);
       
-      // Помечаем, что исторические данные загружены
+      // Mark that historical data has been loaded
       isHistoricalDataLoadedRef.current = true;
       
-      // Сливаем буферизованные WebSocket-данные
+      // Merge buffered WebSocket data
       mergeBufferedWsData(statisticsType, aggregated);
       
     } catch (err) {
@@ -686,11 +686,11 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     }
   }, [macAddress, timeRange, statisticsType, loadNetworkStatistics, loadMediaStatistics, aggregateDataForDisplay, mergeBufferedWsData]);
 
-  // Ref для отслеживания актуального состояния isOpen внутри cleanup
+  // Ref for tracking current isOpen state inside cleanup
   const isOpenRef = useRef(isOpen);
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
 
-  // WebSocket эффект
+  // WebSocket effect
   useEffect(() => {
     if (isOpen && deviceId && isRealtimeAvailable) {
       statisticsWebSocket.enableRealtime(
@@ -712,7 +712,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     };
   }, [isOpen, deviceId, isRealtimeAvailable, handleWebSocketMessage, handleConnectionChange, handleUpdate]);
 
-  // При переключении типа статистики проверяем pending данные
+  // When switching statistics type, check pending data
   useEffect(() => {
     if (pendingWsData[statisticsType] && pendingWsData[statisticsType].length > 0) {
       if (statisticsType === STATISTICS_TYPES.NETWORK) {
@@ -724,16 +724,16 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
     }
   }, [statisticsType, pendingWsData, updateNetworkData, updateMediaData]);
 
-  // Загрузка данных при изменении параметров
+  // Load data when parameters change
   useEffect(() => {
     if (isOpen && macAddress) {
-      // Сбрасываем флаг при новой загрузке
+      // Reset flag on new load
       isHistoricalDataLoadedRef.current = false;
       loadStatistics();
     }
   }, [isOpen, macAddress, timeRange, statisticsType, loadStatistics]);
 
-  // Очистка буфера при закрытии модалки
+  // Clear buffer when modal closes
   useEffect(() => {
     if (!isOpen) {
       wsBufferRef.current = { network: [], media: [] };
@@ -1033,7 +1033,62 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             <>
               {isNetworkStats && (
                 <>
-                  {/* График 1: Трафик (бит/с) */}
+                  {/* Chart 1: Link Speed */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <Wifi size={18} /> Link Speed (Mbps)
+                      {zoomDomain && activeZoomChart === 'chart4' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div
+                      className="chart-container" ref={chartRefs.chart4}
+                      onMouseDown={handleMouseDown('chart4')}
+                      onMouseMove={handleMouseMove('chart4')}
+                      onMouseUp={handleMouseUp('chart4')}
+                      onMouseLeave={handleMouseLeave('chart4')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart4' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(v) => `${v} Mbps`}
+                            domain={[0, dataMax => Math.max(dataMax * 1.2, 10)]}
+                            allowDecimals={false}
+                          />
+                          <Tooltip
+                            formatter={(value, _name, props) => [
+                              `${value} Mbps (${
+                                props.payload?.duplex === 'full' ? 'full duplex' :
+                                props.payload?.duplex === 'half' ? 'half duplex' : 'unknown'
+                              })`,
+                              'Link Speed'
+                            ]}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`}
+                          />
+                          <Legend />
+                          <Line
+                            type="stepAfter"
+                            dataKey="speed"
+                            name="Link Speed"
+                            stroke="#00bcd4"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            connectNulls={false}
+                          />
+                          <SelectionOverlay chartId="chart4" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
+                  </div>
+
+                  {/* Chart 2: Traffic Rate (bits per second) */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <TrendingUp size={18} /> Traffic Rate (bits per second)
@@ -1057,8 +1112,15 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                             tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
                             angle={-45} textAnchor="end" height={60} scale="time" />
                           <YAxis tick={{ fontSize: 12 }} tickFormatter={formatBits} />
-                          <Tooltip formatter={(value, name) => [formatBits(value), name === 'receivedRate' ? 'Download' : 'Upload']}
-                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} />
+                          <Tooltip 
+                            formatter={(value, name) => {
+                              // Исправлено: правильное отображение названий
+                              if (name === 'receivedRate') return [formatBits(value), 'Download'];
+                              if (name === 'sentRate') return [formatBits(value), 'Upload'];
+                              return [formatBits(value), name];
+                            }}
+                            labelFormatter={(ts) => `Time: ${new Date(ts).toLocaleString('ru-RU')}`} 
+                          />
                           <Legend />
                           <Bar dataKey="receivedRate" name="Download" fill="#82ca9d" opacity={0.85}
                             isAnimationActive={false} maxBarSize={getBarConfig(timeRange, chartData.length).maxBarSize} />
@@ -1076,7 +1138,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* График 2: Пакеты */}
+                  {/* Chart 3: Packets */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Activity size={18} /> Packets per Interval
@@ -1114,7 +1176,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* График 3: Ошибки */}
+                  {/* Chart 4: Errors */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <AlertTriangle size={18} /> Errors per Interval
@@ -1151,67 +1213,12 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     </div>
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
-
-                  {/* График 4: Скорость линка — НОВЫЙ */}
-                  <div className="chart-section">
-                    <h3 className="chart-title">
-                      <Wifi size={18} /> Скорость линка (Мбит/с)
-                      {zoomDomain && activeZoomChart === 'chart4' && <span className="zoom-badge">Zoomed</span>}
-                    </h3>
-                    <div
-                      className="chart-container" ref={chartRefs.chart4}
-                      onMouseDown={handleMouseDown('chart4')}
-                      onMouseMove={handleMouseMove('chart4')}
-                      onMouseUp={handleMouseUp('chart4')}
-                      onMouseLeave={handleMouseLeave('chart4')}
-                      onDoubleClick={handleDoubleClick}
-                      style={{ cursor: isSelecting && activeZoomChart === 'chart4' ? 'col-resize' : 'crosshair' }}
-                    >
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
-                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
-                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
-                            angle={-45} textAnchor="end" height={60} scale="time" />
-                          <YAxis
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(v) => `${v} Мбит/с`}
-                            domain={[0, dataMax => Math.max(dataMax * 1.2, 10)]}
-                            allowDecimals={false}
-                          />
-                          <Tooltip
-                            formatter={(value, _name, props) => [
-                              `${value} Мбит/с (${
-                                props.payload?.duplex === 'full' ? 'полный дуплекс' :
-                                props.payload?.duplex === 'half' ? 'полудуплекс' : 'неизвестно'
-                              })`,
-                              'Скорость линка'
-                            ]}
-                            labelFormatter={(ts) => `Время: ${new Date(ts).toLocaleString('ru-RU')}`}
-                          />
-                          <Legend />
-                          <Line
-                            type="stepAfter"
-                            dataKey="speed"
-                            name="Скорость линка"
-                            stroke="#00bcd4"
-                            strokeWidth={2}
-                            dot={false}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                          />
-                          <SelectionOverlay chartId="chart4" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="chart-hint">Зажмите и потяните для зума • Двойной клик для сброса</div>
-                  </div>
                 </>
               )}
 
               {isMediaStats && (
                 <>
-                  {/* График 1: Битрейт */}
+                  {/* Chart 1: Bitrate */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Radio size={18} /> Average Bitrate (bps)
@@ -1249,7 +1256,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* График 2: Видео фреймы */}
+                  {/* Chart 2: Video Frames */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Video size={18} /> Video Frames
@@ -1286,7 +1293,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
-                  {/* График 3: Аудио фреймы */}
+                  {/* Chart 3: Audio Frames */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Volume2 size={18} /> Audio Frames
