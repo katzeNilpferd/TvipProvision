@@ -156,7 +156,8 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   const [chartDimensions, setChartDimensions] = useState({
     chart1: null,
     chart2: null,
-    chart3: null
+    chart3: null,
+    chart4: null
   });
   
   // WebSocket состояния
@@ -168,7 +169,8 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
   const chartRefs = {
     chart1: useRef(null),
     chart2: useRef(null),
-    chart3: useRef(null)
+    chart3: useRef(null),
+    chart4: useRef(null)
   };
 
   // Ref для буферизации WebSocket-данных, пришедших до загрузки истории
@@ -1031,6 +1033,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
             <>
               {isNetworkStats && (
                 <>
+                  {/* График 1: Трафик (бит/с) */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <TrendingUp size={18} /> Traffic Rate (bits per second)
@@ -1073,6 +1076,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
+                  {/* График 2: Пакеты */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Activity size={18} /> Packets per Interval
@@ -1110,6 +1114,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
+                  {/* График 3: Ошибки */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <AlertTriangle size={18} /> Errors per Interval
@@ -1146,11 +1151,67 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     </div>
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
+
+                  {/* График 4: Скорость линка — НОВЫЙ */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">
+                      <Wifi size={18} /> Скорость линка (Мбит/с)
+                      {zoomDomain && activeZoomChart === 'chart4' && <span className="zoom-badge">Zoomed</span>}
+                    </h3>
+                    <div
+                      className="chart-container" ref={chartRefs.chart4}
+                      onMouseDown={handleMouseDown('chart4')}
+                      onMouseMove={handleMouseMove('chart4')}
+                      onMouseUp={handleMouseUp('chart4')}
+                      onMouseLeave={handleMouseLeave('chart4')}
+                      onDoubleClick={handleDoubleClick}
+                      style={{ cursor: isSelecting && activeZoomChart === 'chart4' ? 'col-resize' : 'crosshair' }}
+                    >
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(128, 128, 128, 0.08)" />
+                          <XAxis dataKey="timestamp" type="number" domain={xAxisDomain}
+                            tickFormatter={formatXAxis} tick={{ fontSize: 12 }}
+                            angle={-45} textAnchor="end" height={60} scale="time" />
+                          <YAxis
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(v) => `${v} Мбит/с`}
+                            domain={[0, dataMax => Math.max(dataMax * 1.2, 10)]}
+                            allowDecimals={false}
+                          />
+                          <Tooltip
+                            formatter={(value, _name, props) => [
+                              `${value} Мбит/с (${
+                                props.payload?.duplex === 'full' ? 'полный дуплекс' :
+                                props.payload?.duplex === 'half' ? 'полудуплекс' : 'неизвестно'
+                              })`,
+                              'Скорость линка'
+                            ]}
+                            labelFormatter={(ts) => `Время: ${new Date(ts).toLocaleString('ru-RU')}`}
+                          />
+                          <Legend />
+                          <Line
+                            type="stepAfter"
+                            dataKey="speed"
+                            name="Скорость линка"
+                            stroke="#00bcd4"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            connectNulls={false}
+                          />
+                          <SelectionOverlay chartId="chart4" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="chart-hint">Зажмите и потяните для зума • Двойной клик для сброса</div>
+                  </div>
                 </>
               )}
 
               {isMediaStats && (
                 <>
+                  {/* График 1: Битрейт */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Radio size={18} /> Average Bitrate (bps)
@@ -1188,6 +1249,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
+                  {/* График 2: Видео фреймы */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Video size={18} /> Video Frames
@@ -1224,6 +1286,7 @@ const NetworkStatisticsModal = ({ isOpen, onClose, macAddress }) => {
                     <div className="chart-hint">Click and drag to zoom • Double-click to reset</div>
                   </div>
 
+                  {/* График 3: Аудио фреймы */}
                   <div className="chart-section">
                     <h3 className="chart-title">
                       <Volume2 size={18} /> Audio Frames
