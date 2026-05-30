@@ -554,3 +554,35 @@
 .boolean-field-group .param-row:last-child {
   padding-bottom: 0;
 }
+
+.monitoring-defaults-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 6px;
+  gap: 12px;
+}
+
+.monitoring-defaults-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.monitoring-defaults-info svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}

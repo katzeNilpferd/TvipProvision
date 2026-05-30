@@ -9,7 +9,7 @@ import {
 import lodash from 'lodash'
 import dot from 'dot-object'
 import { getDeviceConfig, replaceDeviceConfig, resetDeviceConfig } from '../services/api'
-import { CONFIG_FIELDS, TABS } from './configFields'
+import { CONFIG_FIELDS, TABS, MONITORING_DEFAULTS, HAS_MONITORING_DEFAULTS } from './configFields'
 import { useAuth } from '../context/AuthContext'
 import CollectionManager from '../components/CollectionManager'
 import NetworkStatisticsModal from '../components/NetworkStatisticsModal'
@@ -137,6 +137,17 @@ const DeviceConfig = () => {
     
     return true
   }
+
+  // Обработчик изменения значений формы
+  const handleApplyMonitoringDefaults = () => {
+    setFormData(prev => ({
+      ...prev,
+      ...Object.fromEntries(
+        Object.entries(MONITORING_DEFAULTS).filter(([, v]) => v !== '')
+      ),
+    }));
+    setActiveTab('monitoring');
+  };
 
   // Рендерим поле ввода
   const renderField = (fieldConfig, isDependent = false) => {
@@ -427,6 +438,22 @@ const DeviceConfig = () => {
 
         {/* Содержимое вкладки */}
         <div className="tab-content">
+          {/* Кнопка дефолтов мониторинга */}
+          {activeTab === 'monitoring' && editing && HAS_MONITORING_DEFAULTS && (
+            <div className="monitoring-defaults-banner">
+              <div className="monitoring-defaults-info">
+                <Activity size={16} />
+                <span>Preset values of the statistics server are available</span>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleApplyMonitoringDefaults}
+                type="button"
+              >
+                Set Defaults
+              </button>
+            </div>
+          )}
           {Object.entries(groupedFields).map(([groupName, groupFields]) => (
             <div key={groupName} className="config-group">
               <h3 className="group-title">{groupName}</h3>
