@@ -20,6 +20,41 @@ const apiStats = axios.create({
 })
 
 // Add request interceptor to include auth token
+apiStats.interceptors.request.use(
+  (config) => {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsedData = JSON.parse(authData);
+      const token = parsedData.token?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle auth errors
+apiStats.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Remove auth data and trigger logout
+      localStorage.removeItem('authData');
+      
+      // Redirect to login page if we're in browser environment
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
     const authData = localStorage.getItem('authData');
