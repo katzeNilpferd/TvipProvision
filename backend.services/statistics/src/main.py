@@ -9,6 +9,7 @@ from infrastructure.database.database import (
 )
 from infrastructure.di.injection import get_broadcast_service_builder
 from presentation.api.endpoint import statistics
+from presentation.api.middleware.auth import AuthMiddleware
 from config import settings
 
 
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="TVIP Statistics Service", lifespan=lifespan)
 
 
+app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -47,4 +49,4 @@ app.include_router(statistics.router)
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT)
+    uvicorn.run(app, host=settings.SERVICE_HOST, port=settings.SERVICE_PORT, log_level="info")

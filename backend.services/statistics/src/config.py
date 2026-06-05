@@ -3,11 +3,16 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Application settings."""
+
+    AUTH_ENABLED: bool = True
     
     # Service
     SERVICE_HOST: str = "0.0.0.0"
     SERVICE_PORT: int = 8000
-    
+
+    SERVICE_PROVISION_HOST: str = "http://tvip_provision"
+    SERVICE_PROVISION_PORT: int = 8000
+
     # Database
     DB_HOST: str = "postgres"
     DB_PORT: int = 5432
