@@ -4,14 +4,15 @@ import {
   ArrowLeft, Save, RotateCcw, RefreshCw, 
   Settings, Globe, Tv, Palette, 
   Shield, Monitor, Server, Activity, Database,
-  ChevronRight
+  ChevronRight, BarChart3
 } from 'lucide-react'
 import lodash from 'lodash'
 import dot from 'dot-object'
 import { getDeviceConfig, replaceDeviceConfig, resetDeviceConfig } from '../services/api'
-import { CONFIG_FIELDS, TABS } from './configFields'
+import { CONFIG_FIELDS, TABS, MONITORING_DEFAULTS, HAS_MONITORING_DEFAULTS } from './configFields'
 import { useAuth } from '../context/AuthContext'
 import CollectionManager from '../components/CollectionManager'
+import NetworkStatisticsModal from '../components/NetworkStatisticsModal'
 import './DeviceConfig.css'
 
 // Сопоставление иконок
@@ -33,6 +34,7 @@ const DeviceConfig = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('updates')
   const [saving, setSaving] = useState(false)
+  const [showStatistics, setShowStatistics] = useState(false)
   
   // Загружаем конфигурацию устройства
   useEffect(() => {
@@ -135,6 +137,17 @@ const DeviceConfig = () => {
     
     return true
   }
+
+  // Обработчик изменения значений формы
+  const handleApplyMonitoringDefaults = () => {
+    setFormData(prev => ({
+      ...prev,
+      ...Object.fromEntries(
+        Object.entries(MONITORING_DEFAULTS).filter(([, v]) => v !== '')
+      ),
+    }));
+    setActiveTab('monitoring');
+  };
 
   // Рендерим поле ввода
   const renderField = (fieldConfig, isDependent = false) => {
@@ -284,6 +297,9 @@ const DeviceConfig = () => {
     return acc
   }, {})
 
+  // Определяем, доступна ли кнопка статистики
+  const isStatisticsAvailable = !authEnabled || isAuthenticated;
+
   return (
     <div className="page device-config-page">
       {/* Шапка */}
@@ -302,6 +318,16 @@ const DeviceConfig = () => {
         </div>
         
         <div className="actions">
+          <button 
+            onClick={() => isStatisticsAvailable && setShowStatistics(true)} 
+            className="btn btn-secondary"
+            disabled={!isStatisticsAvailable}
+            title={!isStatisticsAvailable ? "Please log in to view statistics" : "View Statistics"}
+          >
+            <BarChart3 size={16} />
+            Statistics
+          </button>
+          
           <button onClick={loadDeviceConfig} className="btn btn-secondary" disabled={refreshing}>
             <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
             Refresh
@@ -412,6 +438,22 @@ const DeviceConfig = () => {
 
         {/* Содержимое вкладки */}
         <div className="tab-content">
+          {/* Кнопка дефолтов мониторинга */}
+          {activeTab === 'monitoring' && editing && HAS_MONITORING_DEFAULTS && (
+            <div className="monitoring-defaults-banner">
+              <div className="monitoring-defaults-info">
+                <Activity size={16} />
+                <span>Preset values of the statistics server are available</span>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleApplyMonitoringDefaults}
+                type="button"
+              >
+                Set Defaults
+              </button>
+            </div>
+          )}
           {Object.entries(groupedFields).map(([groupName, groupFields]) => (
             <div key={groupName} className="config-group">
               <h3 className="group-title">{groupName}</h3>
@@ -420,6 +462,13 @@ const DeviceConfig = () => {
           ))}
         </div>
       </div>
+
+      {/* Network Statistics Modal */}
+      <NetworkStatisticsModal 
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        macAddress={config?.device?.mac_address}
+      />
     </div>
   )
 }

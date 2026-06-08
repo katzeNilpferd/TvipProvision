@@ -12,6 +12,14 @@ services:
       postgres:
         condition: service_healthy
 
+  statistics:
+    build: ./backend.services/statistics
+    ports:
+      - "5757:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend:
     build: ./frontend
     ports:
@@ -20,7 +28,8 @@ services:
       - frontend
 
   postgres:
-    image: postgres:16
+    image: timescale/timescaledb:latest-pg16
+    command: postgres -c shared_preload_libraries=timescaledb
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

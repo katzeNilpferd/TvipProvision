@@ -1,4 +1,10 @@
-// configFields.js
+export const MONITORING_DEFAULTS = {
+  'provision.statistics.@url': import.meta.env.VITE_DEFAULT_STATS_URL || '',
+  'provision.statistics.@accum_period': import.meta.env.VITE_DEFAULT_STATS_ACCUM_PERIOD || '',
+  'provision.statistics.media.@period': import.meta.env.VITE_DEFAULT_STATS_MEDIA_PERIOD || '',
+  'provision.statistics.network.@period': import.meta.env.VITE_DEFAULT_STATS_NETWORK_PERIOD || '',
+};
+export const HAS_MONITORING_DEFAULTS = Object.values(MONITORING_DEFAULTS).some(v => v !== '');
 
 export const CONFIG_FIELDS = {
   // ==================== 1. UPDATE & SERVER MANAGEMENT ====================
@@ -91,6 +97,19 @@ export const CONFIG_FIELDS = {
 
   // ==================== 2. MONITORING & LOGGING ====================
   monitoring: [
+    { 
+      group: 'Monitoring Templates', 
+      key: '_monitoring_template', 
+      label: 'Apply Template', 
+      type: 'select', 
+      options: [
+        { value: '', label: 'Custom' },
+        { value: 'default', label: 'Default (from ENV)' },
+        { value: 'production', label: 'Production' },
+        { value: 'none', label: 'Clear All' }
+      ],
+      description: 'Quick-apply monitoring configuration template'
+    },
     { group: 'Syslog', key: 'provision.syslog_host.@name', label: 'Syslog Server IP', type: 'text', description: 'since 3.9.13' },
     { group: 'Statistics', key: 'provision.statistics.@url', label: 'Statistics Server URL', type: 'text', description: 'since 4.0.13' },
     { group: 'Statistics', key: 'provision.statistics.@accum_period', label: 'Accumulation Period (sec)', type: 'number', placeholder: '45', dependsOn: { key: 'provision.statistics.@url', notEmpty: true } },

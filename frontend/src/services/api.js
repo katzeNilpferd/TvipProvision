@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BACKEND_URL || 'http://127.0.0.1:7373'
+const API_STATS_URL = import.meta.env.VITE_API_STATS_URL || 'http://127.0.0.1:5757'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +10,49 @@ const api = axios.create({
   },
   withCredentials: false,
 })
+
+const apiStats = axios.create({
+  baseURL: API_STATS_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: false,
+})
+
+// Add request interceptor to include auth token
+apiStats.interceptors.request.use(
+  (config) => {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsedData = JSON.parse(authData);
+      const token = parsedData.token?.access_token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle auth errors
+apiStats.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Remove auth data and trigger logout
+      localStorage.removeItem('authData');
+      
+      // Redirect to login page if we're in browser environment
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Add request interceptor to include auth token
 api.interceptors.request.use(
@@ -134,6 +178,16 @@ export const upgradePrivilege = async (userId) => {
 
 export const accountUnlock = async (requestData) => {
   const response = await api.post('/api/users/account-unlock', requestData);
+  return response.data;
+};
+
+export const getNetworkStatistics = async (params) => {
+  const response = await apiStats.get('/api/statistics/network', { params });
+  return response.data;
+};
+
+export const getMediaStatistics = async (params) => {
+  const response = await apiStats.get('/api/statistics/media', { params });
   return response.data;
 };
 
